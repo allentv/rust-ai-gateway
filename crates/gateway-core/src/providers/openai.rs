@@ -46,6 +46,7 @@ struct OpenAiResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct OpenAiChoice {
     message: OpenAiResponseMessage,
     finish_reason: Option<String>,
@@ -65,6 +66,7 @@ struct OpenAiUsage {
 
 /// OpenAI streaming response
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct OpenAiStreamChunk {
     id: String,
     choices: Vec<OpenAiStreamChoice>,
@@ -244,7 +246,7 @@ impl Provider for OpenAiProvider {
         let stream = response
             .bytes_stream()
             .flat_map(|result| {
-                let chunks = match result {
+                match result {
                     Ok(bytes) => {
                         let text = String::from_utf8_lossy(&bytes);
                         // SSE format: "data: {...}\n\n" or "data: [DONE]\n\n"
@@ -284,8 +286,7 @@ impl Provider for OpenAiProvider {
                         })
                         .boxed()
                     }
-                };
-                futures::future::ready(chunks)
+                }
             })
             .boxed();
 

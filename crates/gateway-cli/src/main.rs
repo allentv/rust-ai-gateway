@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize tracing
-    let log_level = if cli.verbose { "debug" } else { "info" };
+    let _log_level = if cli.verbose { "debug" } else { "info" };
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()

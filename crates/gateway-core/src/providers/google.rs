@@ -14,6 +14,7 @@ const GOOGLE_MODELS: &[&str] = &[
 ];
 
 /// Google AI (Gemini) provider
+#[allow(dead_code)]
 pub struct GoogleProvider {
     api_key: String,
     base_url: String,
@@ -35,7 +36,7 @@ impl Provider for GoogleProvider {
     #[instrument(skip(self), fields(model = %request.model))]
     async fn complete_chat(
         &self,
-        request: ChatRequest,
+        _request: ChatRequest,
     ) -> Result<ChatResponse, GatewayError> {
         Err(GatewayError::Internal(
             "Google provider not yet implemented".to_string(),
@@ -45,7 +46,7 @@ impl Provider for GoogleProvider {
     #[instrument(skip(self), fields(model = %request.model))]
     async fn stream_chat(
         &self,
-        request: ChatRequest,
+        _request: ChatRequest,
     ) -> Result<BoxStream<'static, Result<ChatChunk, GatewayError>>, GatewayError> {
         Err(GatewayError::Internal(
             "Google provider not yet implemented".to_string(),

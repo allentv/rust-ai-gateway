@@ -1,5 +1,3 @@
-use crate::types::ChatRequest;
-
 /// Core error types for the gateway
 #[derive(Debug, thiserror::Error)]
 pub enum GatewayError {

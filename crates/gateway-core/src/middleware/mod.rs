@@ -3,6 +3,7 @@ use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use governor::clock::Clock;
 use governor::{Quota, RateLimiter};
 use moka::future::Cache as MokaCache;
 use tokio::sync::RwLock;
@@ -15,7 +16,7 @@ use crate::types::{ChatRequest, ChatResponse, TokenUsage};
 
 /// Per-provider rate limiter using the governor crate
 pub struct ProviderRateLimiter {
-    limiters: HashMap<String, governor::rate_limiter::DirectRateLimiter>,
+    limiters: HashMap<String, governor::DefaultDirectRateLimiter>,
 }
 
 impl ProviderRateLimiter {
@@ -54,10 +55,11 @@ impl ProviderRateLimiter {
                 }
                 Err(not_until) => {
                     warn!("Rate limit exceeded for provider '{}'", provider);
+                    let clock = governor::clock::QuantaClock::default();
                     Err(GatewayError::RateLimitExceeded(format!(
                         "Rate limit exceeded for provider '{}'. Retry after {:?}",
                         provider,
-                        not_until.wait_time_from(std::time::Instant::now())
+                        not_until.wait_time_from(clock.now())
                     )))
                 }
             }

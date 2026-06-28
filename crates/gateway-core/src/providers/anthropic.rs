@@ -58,6 +58,7 @@ struct AnthropicUsage {
 /// Anthropic streaming response events
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
+#[allow(dead_code)]
 enum AnthropicStreamEvent {
     #[serde(rename = "content_block_delta")]
     ContentBlockDelta {
@@ -79,6 +80,7 @@ struct AnthropicDelta {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct AnthropicStreamMessage {
     id: String,
 }
@@ -259,13 +261,13 @@ impl Provider for AnthropicProvider {
             ));
         }
 
-        let mut message_id = String::new();
+        let message_id = String::new();
 
         let stream = response
             .bytes_stream()
             .flat_map(move |result| {
                 let id = message_id.clone();
-                let chunks = match result {
+                match result {
                     Ok(bytes) => {
                         let text = String::from_utf8_lossy(&bytes);
                         let mut chunks = Vec::new();
@@ -314,8 +316,7 @@ impl Provider for AnthropicProvider {
                         })
                         .boxed()
                     }
-                };
-                futures::future::ready(chunks)
+                }
             })
             .boxed();
 

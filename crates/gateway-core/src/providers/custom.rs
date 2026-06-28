@@ -7,6 +7,7 @@ use crate::types::{ChatChunk, ChatRequest, ChatResponse};
 use crate::providers::traits::Provider;
 
 /// Custom OpenAI-compatible provider
+#[allow(dead_code)]
 pub struct CustomProvider {
     name: String,
     api_key: String,
@@ -37,7 +38,7 @@ impl Provider for CustomProvider {
     #[instrument(skip(self), fields(model = %request.model))]
     async fn complete_chat(
         &self,
-        request: ChatRequest,
+        _request: ChatRequest,
     ) -> Result<ChatResponse, GatewayError> {
         Err(GatewayError::Internal(format!(
             "Custom provider '{}' not yet implemented",
@@ -48,7 +49,7 @@ impl Provider for CustomProvider {
     #[instrument(skip(self), fields(model = %request.model))]
     async fn stream_chat(
         &self,
-        request: ChatRequest,
+        _request: ChatRequest,
     ) -> Result<BoxStream<'static, Result<ChatChunk, GatewayError>>, GatewayError> {
         Err(GatewayError::Internal(format!(
             "Custom provider '{}' not yet implemented",
