@@ -25,8 +25,8 @@ This is a Rust workspace project implementing a high-throughput AI/LLM gateway p
 
 ## Testing
 
-- Run `cargo test --workspace` to execute all tests
-- Run `cargo test -p <crate-name>` to test a specific crate
+- Run `mise run test` to execute all tests
+- Run `mise run test-crate gateway-core` to test a specific crate
 - **Tests must always be in separate files** — never write inline `#[cfg(test)] mod tests { ... }` blocks in source files. Instead:
   - Place tests in a sibling `tests.rs` file (e.g., `foo.rs` → `foo/mod.rs` + `foo/tests.rs`, or `bar/mod.rs` → `bar/tests.rs`)
   - Use `#[cfg(test)] mod tests;` at the bottom of the source file to reference the test module
@@ -36,11 +36,12 @@ This is a Rust workspace project implementing a high-throughput AI/LLM gateway p
 
 ## Build & CI
 
-- `cargo build` — development build
-- `cargo build --release` — optimized release build
-- `cargo check --workspace` — quick compilation check
-- `cargo clippy --workspace` — lint check
-- `cargo fmt --check` — formatting check (use `cargo fmt` to fix)
+- `mise run build` — development build
+- `mise run build-release` — optimized release build
+- `mise run check` — full health check (lint + fmt-check + test)
+- `mise run lint` — lint check
+- `mise run fmt-check` — formatting check
+- `mise run fmt` — auto-format
 
 ## Provider Implementation Pattern
 
