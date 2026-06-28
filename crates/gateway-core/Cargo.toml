@@ -1,0 +1,25 @@
+[package]
+name = "gateway-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core library for the Rust AI Gateway"
+
+[dependencies]
+tokio.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+bytes.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+url.workspace = true
+governor.workspace = true
+moka.workspace = true
+
+gateway-config = { path = "../gateway-config" }

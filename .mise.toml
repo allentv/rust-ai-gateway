@@ -1,0 +1,54 @@
+[tools]
+rust = "1.96.0"
+
+[tasks.build]
+description = "Build the workspace (development)"
+run = "cargo build --workspace"
+
+[tasks.build-release]
+description = "Build the workspace (release)"
+run = "cargo build --workspace --release"
+
+[tasks.test]
+description = "Run all workspace tests"
+run = "cargo test --workspace"
+
+[tasks.test-output]
+description = "Run all workspace tests with output"
+run = "cargo test --workspace -- --nocapture"
+
+[tasks.test-crate]
+description = "Run tests for a specific crate (usage: mise run test-crate gateway-core)"
+run = "cargo test -p {{arg(name='crate', i=1, required=true)}}"
+
+[tasks.fmt]
+description = "Format all Rust code"
+run = "cargo fmt"
+
+[tasks.fmt-check]
+description = "Check formatting without modifying files"
+run = "cargo fmt --check"
+
+[tasks.lint]
+description = "Run clippy linter"
+run = "cargo clippy --workspace -- -D warnings"
+
+[tasks.check]
+description = "Full project health check: compile, lint, format, and test"
+depends = ["lint", "fmt-check", "test"]
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "cargo clean"
+
+[tasks.update]
+description = "Update dependencies"
+run = "cargo update"
+
+[tasks.doc]
+description = "Generate documentation"
+run = "cargo doc --workspace --no-deps"
+
+[tasks.fmt-crate]
+description = "Format a specific crate (usage: mise run fmt-crate gateway-core)"
+run = "cargo fmt -p {{arg(name='crate', i=1, required=true)}}"
