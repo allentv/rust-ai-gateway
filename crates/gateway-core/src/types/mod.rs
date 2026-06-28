@@ -69,6 +69,7 @@ impl TokenUsage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatChunk {
     pub id: String,
+    pub model: String,
     pub delta: Delta,
     pub finish_reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

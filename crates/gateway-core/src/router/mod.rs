@@ -1,3 +1,4 @@
+use futures::stream::BoxStream;
 use std::collections::HashMap;
 
 use tracing::{info, warn};
@@ -6,7 +7,7 @@ use crate::error::GatewayError;
 use crate::providers::{
     AnthropicProvider, CustomProvider, GoogleProvider, OpenAiProvider, Provider,
 };
-use crate::types::{ChatRequest, ChatResponse};
+use crate::types::{ChatChunk, ChatRequest, ChatResponse};
 use gateway_config::schema::{GatewayConfig, ProviderConfig};
 
 /// Router that manages provider selection and request routing
@@ -90,7 +91,31 @@ impl Router {
 
     /// Route a chat completion request to the appropriate provider
     pub async fn route(&self, request: ChatRequest) -> Result<ChatResponse, GatewayError> {
-        // Determine which provider to use
+        let provider_name = self.resolve_provider(&request)?;
+
+        if let Some(provider) = self.providers.get(provider_name) {
+            return provider.complete_chat(request).await;
+        }
+
+        Err(GatewayError::ProviderNotFound(provider_name.to_string()))
+    }
+
+    /// Route a streaming chat completion request to the appropriate provider
+    pub async fn route_stream(
+        &self,
+        request: ChatRequest,
+    ) -> Result<BoxStream<'static, Result<ChatChunk, GatewayError>>, GatewayError> {
+        let provider_name = self.resolve_provider(&request)?;
+
+        if let Some(provider) = self.providers.get(provider_name) {
+            return provider.stream_chat(request).await;
+        }
+
+        Err(GatewayError::ProviderNotFound(provider_name.to_string()))
+    }
+
+    /// Resolve which provider to use for a request (primary or fallback)
+    fn resolve_provider<'a>(&'a self, request: &'a ChatRequest) -> Result<&'a str, GatewayError> {
         let provider_name = request
             .provider
             .as_deref()
@@ -99,7 +124,7 @@ impl Router {
         // Try the primary provider first
         if let Some(provider) = self.providers.get(provider_name) {
             if provider.supports_model(&request.model) {
-                return provider.complete_chat(request).await;
+                return Ok(provider_name);
             } else {
                 warn!(
                     "Model '{}' not supported by provider '{}', trying fallbacks",
@@ -118,13 +143,13 @@ impl Router {
                         "Routing to fallback provider '{}' for model '{}'",
                         fallback_name, request.model
                     );
-                    return provider.complete_chat(request).await;
+                    return Ok(fallback_name);
                 }
             }
         }
 
         Err(GatewayError::ModelNotSupported {
-            model: request.model,
+            model: request.model.clone(),
             provider: provider_name.to_string(),
         })
     }
@@ -155,6 +180,19 @@ impl Router {
     /// Check if a model is supported by any provider
     pub fn is_model_supported(&self, model: &str) -> bool {
         self.providers.values().any(|p| p.supports_model(model))
+    }
+
+    /// List all available models with their provider names
+    pub fn available_models_with_providers(&self) -> Vec<(String, String)> {
+        let mut models = Vec::new();
+        for (name, provider) in &self.providers {
+            for model in provider.supported_models() {
+                if !models.iter().any(|(m, _)| m == model) {
+                    models.push((model.to_string(), name.clone()));
+                }
+            }
+        }
+        models
     }
 
     /// Get the default provider name

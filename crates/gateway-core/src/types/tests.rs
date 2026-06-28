@@ -156,6 +156,7 @@ fn test_chat_response_serialization_roundtrip() {
 fn test_chat_chunk_serialization_roundtrip() {
     let chunk = ChatChunk {
         id: "chunk-1".to_string(),
+        model: "gpt-4".to_string(),
         delta: Delta {
             role: Some("assistant".to_string()),
             content: Some("Hello".to_string()),
@@ -174,6 +175,7 @@ fn test_chat_chunk_serialization_roundtrip() {
 fn test_chat_chunk_minimal() {
     let chunk = ChatChunk {
         id: "chunk-2".to_string(),
+        model: "gpt-4".to_string(),
         delta: Delta {
             role: None,
             content: Some(" world".to_string()),
