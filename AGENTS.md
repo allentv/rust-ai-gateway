@@ -75,7 +75,11 @@ rust-ai-gateway/
 ### General Rules
 - Run `cargo test --workspace` to execute all tests
 - Run `cargo test -p <crate-name>` to test a specific crate
-- Tests live in `#[cfg(test)] mod tests` blocks within source files
+- **Tests must always be in separate files** — never write inline `#[cfg(test)] mod tests { ... }` blocks. Instead:
+  - For a single file `foo.rs`, convert it to `foo/mod.rs` + `foo/tests.rs`
+  - For an existing module directory `bar/mod.rs`, add `bar/tests.rs`
+  - Use `#[cfg(test)] mod tests;` at the bottom of the source file to reference the test module
+  - The test file should use `use super::*;` to import everything from the parent module
 - When modifying code, ensure all existing tests still pass
 - Add tests for new functionality where practical
 
@@ -92,10 +96,10 @@ mise run test-crate gateway-core
 ```
 
 ### Test Best Practices
-1. **Test isolation**: Each test should be independent and not rely on other tests
-2. **Test naming**: Use descriptive test names that explain what is being tested
-3. **Test coverage**: Aim for high test coverage, especially for core logic
-4. **Test structure**: Use `#[cfg(test)] mod tests` blocks within source files
+1. **Test file structure**: Tests must always be in separate `tests.rs` files, referenced via `#[cfg(test)] mod tests;`
+2. **Test isolation**: Each test should be independent and not rely on other tests
+3. **Test naming**: Use descriptive test names that explain what is being tested
+4. **Test coverage**: Aim for high test coverage, especially for core logic
 5. **Test assertions**: Use clear assertions with descriptive messages
 
 ## Build & CI
@@ -337,7 +341,11 @@ mise run lint
 - Update validation in `gateway-config/src/validation.rs`
 
 ### Adding Tests
-- Add tests in `#[cfg(test)] mod tests` blocks within source files
+- **Always put tests in separate files** — never write inline test modules
+- For a single file `foo.rs`, convert it to `foo/mod.rs` + `foo/tests.rs`
+- For an existing module directory `bar/mod.rs`, add `bar/tests.rs`
+- Use `#[cfg(test)] mod tests;` at the bottom of the source file
+- Use `use super::*;` at the top of the test file
 - Use descriptive test names
 - Test edge cases and error conditions
 - Ensure tests are independent and isolated

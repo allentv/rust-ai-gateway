@@ -27,7 +27,10 @@ This is a Rust workspace project implementing a high-throughput AI/LLM gateway p
 
 - Run `cargo test --workspace` to execute all tests
 - Run `cargo test -p <crate-name>` to test a specific crate
-- Tests live in `#[cfg(test)] mod tests` blocks within source files
+- **Tests must always be in separate files** — never write inline `#[cfg(test)] mod tests { ... }` blocks in source files. Instead:
+  - Place tests in a sibling `tests.rs` file (e.g., `foo.rs` → `foo/mod.rs` + `foo/tests.rs`, or `bar/mod.rs` → `bar/tests.rs`)
+  - Use `#[cfg(test)] mod tests;` at the bottom of the source file to reference the test module
+  - The test file should use `use super::*;` to import everything from the parent module
 - When modifying code, ensure all existing tests still pass
 - Add tests for new functionality where practical
 
