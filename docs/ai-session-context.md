@@ -21,12 +21,24 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 
 | Phase | Status | Summary |
 |-------|--------|---------|
-| Phase 1: Foundation | ~70% complete | All crates compile and have source files. Missing: config files, core tests, config validation tests |
+| Phase 1: Foundation | ✅ 100% complete | All crates compile, have source files, config files exist, 64 tests passing, clippy clean |
 | Phase 2: Core | ~30% complete | Router fully implemented. API handlers exist but chat returns placeholder responses (not wired to router). No SSE streaming. |
 | Phase 3: Middleware | ~40% complete | Core middleware structs exist with tests. **None are Tower layers. None are wired into HTTP pipeline.** No OpenTelemetry. |
 | Phase 4: Production | ~10% complete | Graceful shutdown implemented. Basic health check exists. No Docker/K8s/CI/CD/docs/integration tests. |
 
 **Critical gap**: The `Router` exists in gateway-core but the API chat handler doesn't use it — it returns a hardcoded echo response.
+
+---
+
+## Test Status
+
+| Crate | Tests | Status |
+|-------|-------|--------|
+| `gateway-config` | 25 | ✅ All passing (validation, loading, env var resolution) |
+| `gateway-core` | 39 | ✅ All passing (types, errors, router, middleware) |
+| `gateway-api` | 0 | — No tests yet |
+| `gateway-cli` | 0 | — No tests yet |
+| **Total** | **64** | ✅ `cargo test --workspace` passes, `cargo clippy --workspace -- -D warnings` clean |
 
 ---
 
@@ -37,24 +49,30 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 | File | Status | Lines | Description |
 |------|--------|-------|-------------|
 | `src/lib.rs` | ✅ | ~5 | Module declarations, re-exports `schema`, `validation` |
-| `src/schema.rs` | ✅ | ~120 | All config types: `GatewayConfig`, `ServerConfig`, `ProviderConfig`, `RateLimitConfig`, `RoutingConfig`, `CacheConfig`, `TelemetryConfig`, `MeteringConfig`, `MetricType` |
-| `src/validation.rs` | ✅ | ~150 | Config loading (YAML/TOML/JSON), env var resolution (`${VAR}`), validation. Has 2 tests. |
+| `src/schema.rs` | ✅ | ~150 | All config types: `GatewayConfig`, `ServerConfig`, `ProviderConfig`, `RateLimitConfig`, `RoutingConfig`, `CacheConfig`, `TelemetryConfig`, `MeteringConfig` (derived Default), `MetricType` |
+| `src/validation/mod.rs` | ✅ | ~120 | Config loading (YAML/TOML/JSON), env var resolution (`${VAR}`), validation. References tests module. |
+| `src/validation/tests.rs` | ✅ | ~350 | 25 comprehensive tests: env var resolution, validate rules, load from YAML/TOML/JSON, auto-detect format, error cases, env resolution in config loading |
 
 ### `gateway-core` (partially implemented)
 
 | File | Status | Lines | Description |
 |------|--------|-------|-------------|
-| `src/lib.rs` | ✅ | 5 | Module declarations: `error`, `types`, `providers`, `router`, `middleware`. Re-exports key types. |
-| `src/error.rs` | ✅ | 120 | `GatewayError` enum (11 variants), HTTP status code mapping via `From<GatewayError> for (StatusCode, Json<Value>)`, helper constructors |
-| `src/types.rs` | ✅ | 110 | `Message`, `Role` (System/User/Assistant/Tool), `ChatRequest`, `ChatResponse`, `TokenUsage`, `ChatChunk`, `Delta`, `RequestId` |
+| `src/lib.rs` | ✅ | 6 | Module declarations: `config`, `error`, `types`, `providers`, `router`, `middleware` |
+| `src/config.rs` | ✅ | ~25 | Thin wrapper around `gateway-config`: `load_config()`, `validate_config()` |
+| `src/error/mod.rs` | ✅ | ~110 | `GatewayError` enum (11 variants), HTTP status code mapping, helper constructors. References tests module. |
+| `src/error/tests.rs` | ✅ | ~175 | 13 tests: constructor tests, HTTP status code mapping for each variant, Display messages |
+| `src/types/mod.rs` | ✅ | ~110 | `Message`, `Role` (System/User/Assistant/Tool), `ChatRequest`, `ChatResponse`, `TokenUsage`, `ChatChunk`, `Delta`, `RequestId`. References tests module. |
+| `src/types/tests.rs` | ✅ | ~200 | 13 tests: TokenUsage calculation, RequestId UUID validation, serialization roundtrips, serde defaults, skip_serializing_if behavior |
 | `src/providers/traits.rs` | ✅ | ~40 | `Provider` trait: `complete_chat()`, `stream_chat()`, `name()`, `supports_streaming()`, `supported_models()`, `supports_model()` |
 | `src/providers/mod.rs` | ✅ | ~10 | Module declarations and re-exports for all providers |
-| `src/providers/openai.rs` | ✅ | 302 | Full implementation. Models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo. SSE streaming via `bytes_stream()`. |
-| `src/providers/anthropic.rs` | ✅ | 334 | Full implementation. Models: claude-sonnet-4-20250514, claude-3-5-sonnet, claude-3-opus, etc. SSE streaming with event types. |
-| `src/providers/google.rs` | ⚠️ Stub | ~60 | Implements `Provider` trait. Supports `gemini-pro`. Returns `Err(Internal)` for API calls. |
-| `src/providers/custom.rs` | ⚠️ Stub | ~60 | Generic OpenAI-compatible provider. Configurable model list. Returns placeholder responses. |
-| `src/router/mod.rs` | ✅ | 266 | `Router` struct with `new()`, `route()`, `get_provider()`, `available_providers()`, `available_models()`, `is_model_supported()`. Factory creates providers by name. 6 unit tests. |
-| `src/middleware/mod.rs` | ⚠️ Partial | 401 | Contains 4 middleware structs (see below). 4 unit tests. **Not Tower layers.** |
+| `src/providers/openai.rs` | ✅ | ~300 | Full implementation. Models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo. SSE streaming via `bytes_stream()`. |
+| `src/providers/anthropic.rs` | ✅ | ~325 | Full implementation. Models: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307. SSE streaming with event types. |
+| `src/providers/google.rs` | ⚠️ Stub | ~65 | Implements `Provider` trait. Supports gemini-2.0-flash, gemini-2.0-pro, gemini-1.5-flash, gemini-1.5-pro. Returns `Err(Internal)` for API calls. |
+| `src/providers/custom.rs` | ⚠️ Stub | ~70 | Generic OpenAI-compatible provider. Configurable model list. Returns placeholder responses. |
+| `src/router/mod.rs` | ✅ | ~165 | `Router` struct with `new()`, `route()`, `get_provider()`, `available_providers()`, `available_models()`, `is_model_supported()`. Factory creates providers by name. References tests module. |
+| `src/router/tests.rs` | ✅ | ~120 | 6 tests: router creation, available providers/models, model support, invalid config, get provider |
+| `src/middleware/mod.rs` | ⚠️ Partial | ~285 | Contains 4 middleware structs (see below). References tests module. **Not Tower layers.** |
+| `src/middleware/tests.rs` | ✅ | ~95 | 4 tests: rate limiter creation, cache operations, auth middleware, cost meter |
 
 ### Middleware structs in `gateway-core/src/middleware/mod.rs`:
 
@@ -86,11 +104,18 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 | `src/commands/status.rs` | ✅ | ~30 | Shows providers, models, server info from config |
 | `src/commands/cache.rs` | ⚠️ | ~20 | Placeholder subcommands |
 
+### Configuration Files
+
+| File | Status | Description |
+|------|--------|-------------|
+| `config/default.yaml` | ✅ | Default config with server, OpenAI + Anthropic providers, routing, cache, telemetry, metering. Uses `${ENV_VAR}` placeholders. |
+| `config/example.yaml` | ✅ | Detailed example with comments showing all configuration options including Google provider and custom provider examples. |
+
 ---
 
 ## Key Types Quick Reference
 
-### Request/Response flow types (`gateway-core/src/types.rs`)
+### Request/Response flow types (`gateway-core/src/types/mod.rs`)
 ```
 ChatRequest { messages: Vec<Message>, model: String, max_tokens: Option<u32>,
               temperature: Option<f32>, stream: bool, provider: Option<String> }
@@ -100,7 +125,7 @@ Message { role: Role, content: String, name: Option<String> }
 Role = System | User | Assistant | Tool
 TokenUsage { prompt_tokens: u32, completion_tokens: u32, total_tokens: u32 }
 ChatChunk { id: String, delta: Delta, finish_reason: Option<String>, usage: Option<TokenUsage> }
-Delta { role: Option<Role>, content: Option<String> }
+Delta { role: Option<String>, content: Option<String> }
 ```
 
 ### Provider trait (`gateway-core/src/providers/traits.rs`)
@@ -116,7 +141,7 @@ pub trait Provider: Send + Sync {
 }
 ```
 
-### GatewayError variants (`gateway-core/src/error.rs`)
+### GatewayError variants (`gateway-core/src/error/mod.rs`)
 `Provider`, `ProviderNotFound`, `ModelNotSupported`, `Timeout`, `RateLimitExceeded`, `Authentication`, `Configuration`, `Serialization`, `Network`, `StreamClosed`, `Internal`
 
 Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<Value>)`.
@@ -129,14 +154,17 @@ Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<V
 ## What Works Now
 
 1. **Workspace compiles** — `cargo build --workspace` succeeds
-2. **Config loading** — YAML/TOML/JSON with `${ENV_VAR}` resolution and validation
-3. **Router** — Creates providers from config, routes requests with fallback, validates model support
-4. **OpenAI/Anthropic providers** — Full `complete_chat()` and `stream_chat()` implementations with SSE parsing
-5. **HTTP server** — Starts, serves routes, handles graceful shutdown
-6. **Health endpoint** — `GET /health` returns 200
-7. **Chat endpoint** — `POST /v1/chat/completions` accepts requests but returns echo/placeholder
-8. **CLI** — Config validation, status display
-9. **Middleware structs** — Rate limiter, cache, auth, cost meter all have working logic with tests
+2. **64 tests passing** — `cargo test --workspace` succeeds, `cargo clippy --workspace -- -D warnings` clean
+3. **Config loading** — YAML/TOML/JSON with `${ENV_VAR}` resolution and validation
+4. **Config files exist** — `config/default.yaml` and `config/example.yaml` with full documentation
+5. **Router** — Creates providers from config, routes requests with fallback, validates model support
+6. **OpenAI/Anthropic providers** — Full `complete_chat()` and `stream_chat()` implementations with SSE parsing
+7. **HTTP server** — Starts, serves routes, handles graceful shutdown
+8. **Health endpoint** — `GET /health` returns 200
+9. **Chat endpoint** — `POST /v1/chat/completions` accepts requests but returns echo/placeholder
+10. **CLI** — Config validation, status display
+11. **Middleware structs** — Rate limiter, cache, auth, cost meter all have working logic with tests
+12. **Tests separated** — All test modules are in dedicated `tests.rs` files for easier maintenance
 
 ## What Doesn't Work Yet
 
@@ -145,11 +173,11 @@ Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<V
 3. **Middleware not wired as Tower layers** — Structs exist but aren't in the HTTP middleware pipeline
 4. **No `/v1/models` endpoint**
 5. **No `/ready` readiness probe**
-6. **No config files** — `config/` directory doesn't exist
-7. **No OpenTelemetry**
-8. **No Docker/K8s/CI**
-9. **No integration tests**
-10. **No tests** for gateway-core types, error module, or provider implementations
+6. **No OpenTelemetry**
+7. **No Docker/K8s/CI**
+8. **No integration tests**
+9. **No tests for gateway-api or gateway-cli**
+10. **No tests for provider implementations** (only router tests verify provider creation)
 
 ---
 
@@ -166,18 +194,15 @@ Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<V
 - Map `ChatChunk` stream to SSE events
 - Return `Sse<impl Stream<Item = Result<Event, Infallible>>>`
 
-### 3. Create Default Config File
-- Create `config/default.yaml` with server, providers (openai + anthropic), routing, cache, telemetry, metering sections
-
-### 4. Add Unit Tests
-- Tests for `types.rs` (serialization, TokenUsage, RequestId)
-- Tests for `error.rs` (status code mapping for each variant)
-- Tests for provider implementations (mock HTTP responses)
-- More tests for config validation
-
-### 5. Wire Middleware as Tower Layers
+### 3. Wire Middleware as Tower Layers
 - Wrap `ProviderRateLimiter`, `ChatCache`, `AuthMiddleware`, `CostMeter` as Tower `Service`/`Layer` types
 - Add them to the router in `main.rs`
+
+### 4. Add More Tests
+- Integration tests for API endpoints (start server, send requests)
+- Tests for provider implementations (mock HTTP responses)
+- CLI command tests
+- Provider trait tests with mock providers
 
 ---
 
@@ -189,12 +214,12 @@ mise run build              # Development build
 mise run build-release      # Release build
 
 # Test
-mise run test               # All tests
+mise run test               # All tests (64 passing)
 mise run test-output        # Tests with output
 mise run test-crate gateway-core   # Specific crate
 
 # Lint & Format
-mise run lint               # cargo clippy --workspace
+mise run lint               # cargo clippy --workspace -- -D warnings
 mise run fmt                # cargo fmt
 mise run fmt-check          # cargo fmt --check
 mise run check              # Full health check (lint + fmt + test)
@@ -203,6 +228,7 @@ mise run check              # Full health check (lint + fmt + test)
 cargo build --workspace
 cargo test --workspace
 cargo clippy --workspace -- -D warnings
+cargo fmt --all
 cargo fmt --check
 ```
 
@@ -227,5 +253,6 @@ All workspace dependencies are defined in root `Cargo.toml`:
 - **Error flow**: Provider errors → `GatewayError` → HTTP status code via `From` impl
 - **Streaming**: Providers use `reqwest::bytes_stream()` + `futures::StreamExt` to parse SSE
 - **Config flow**: YAML file → `load_config_with_env()` → `GatewayConfig` → `Router::new()` → providers
+- **Test structure**: Each module has a separate `tests.rs` file referenced via `#[cfg(test)] mod tests;`
 - **API flow** (current): Request → parse JSON → placeholder response (Router not wired)
 - **API flow** (target): Request → parse JSON → `Router::route()` → `Provider::complete_chat()` → response
