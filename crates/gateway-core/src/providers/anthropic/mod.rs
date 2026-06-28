@@ -255,11 +255,13 @@ impl Provider for AnthropicProvider {
         }
 
         let message_id = String::new();
+        let model = request.model.clone();
 
         let stream = response
             .bytes_stream()
             .flat_map(move |result| {
                 let id = message_id.clone();
+                let model = model.clone();
                 match result {
                     Ok(bytes) => {
                         let text = String::from_utf8_lossy(&bytes);
@@ -276,6 +278,7 @@ impl Provider for AnthropicProvider {
                                         if let Some(text) = delta.text {
                                             chunks.push(Ok(ChatChunk {
                                                 id: id.clone(),
+                                                model: model.clone(),
                                                 delta: Delta {
                                                     role: None,
                                                     content: Some(text),
@@ -288,6 +291,7 @@ impl Provider for AnthropicProvider {
                                     AnthropicStreamEvent::MessageStop => {
                                         chunks.push(Ok(ChatChunk {
                                             id: id.clone(),
+                                            model: model.clone(),
                                             delta: Delta {
                                                 role: None,
                                                 content: None,
@@ -322,3 +326,6 @@ impl Provider for AnthropicProvider {
         ANTHROPIC_MODELS.to_vec()
     }
 }
+
+#[cfg(test)]
+mod tests;

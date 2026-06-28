@@ -262,6 +262,7 @@ impl Provider for OpenAiProvider {
                                         for choice in chunk.choices {
                                             chunks.push(Ok(ChatChunk {
                                                 id: chunk.id.clone(),
+                                                model: chunk.model.clone(),
                                                 delta: Delta {
                                                     role: Self::map_role(choice.delta.role),
                                                     content: choice.delta.content,
@@ -296,3 +297,6 @@ impl Provider for OpenAiProvider {
         OPENAI_MODELS.to_vec()
     }
 }
+
+#[cfg(test)]
+mod tests;
