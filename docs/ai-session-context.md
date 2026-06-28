@@ -1,6 +1,6 @@
 # AI Session Context — Current Project State
 
-**Last updated**: 2026-06-28
+**Last updated**: 2026-06-29
 
 This file provides a snapshot of the project's current state for AI sessions. Read this file at the start of each session to avoid re-scanning the entire codebase.
 
@@ -22,11 +22,11 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 | Phase | Status | Summary |
 |-------|--------|---------|
 | Phase 1: Foundation | ✅ 100% complete | All crates compile, have source files, config files exist, 64 tests passing, clippy clean |
-| Phase 2: Core | ~30% complete | Router fully implemented. API handlers exist but chat returns placeholder responses (not wired to router). No SSE streaming. |
+| Phase 2: Core | ~75% complete | Router fully implemented and wired to API. Chat handler routes to providers. SSE streaming integrated. `/v1/models` endpoint exists. |
 | Phase 3: Middleware | ~40% complete | Core middleware structs exist with tests. **None are Tower layers. None are wired into HTTP pipeline.** No OpenTelemetry. |
 | Phase 4: Production | ~10% complete | Graceful shutdown implemented. Basic health check exists. No Docker/K8s/CI/CD/docs/integration tests. |
 
-**Critical gap**: The `Router` exists in gateway-core but the API chat handler doesn't use it — it returns a hardcoded echo response.
+**Note**: The router is now fully wired to the API layer. Chat requests are routed to the appropriate provider with fallback support.
 
 ---
 
@@ -35,10 +35,10 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 | Crate | Tests | Status |
 |-------|-------|--------|
 | `gateway-config` | 25 | ✅ All passing (validation, loading, env var resolution) |
-| `gateway-core` | 39 | ✅ All passing (types, errors, router, middleware) |
-| `gateway-api` | 0 | — No tests yet |
+| `gateway-core` | ~45 | ✅ All passing (types, errors, router, middleware, openai tests) |
+| `gateway-api` | 0 | — No tests yet (handlers now fully wired) |
 | `gateway-cli` | 0 | — No tests yet |
-| **Total** | **64** | ✅ `cargo test --workspace` passes, `cargo clippy --workspace -- -D warnings` clean |
+| **Total** | **~70** | ✅ `cargo test --workspace` passes, `cargo clippy --workspace -- -D warnings` clean |
 
 ---
 
@@ -61,15 +61,16 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 | `src/config.rs` | ✅ | ~25 | Thin wrapper around `gateway-config`: `load_config()`, `validate_config()` |
 | `src/error/mod.rs` | ✅ | ~110 | `GatewayError` enum (11 variants), HTTP status code mapping, helper constructors. References tests module. |
 | `src/error/tests.rs` | ✅ | ~175 | 13 tests: constructor tests, HTTP status code mapping for each variant, Display messages |
-| `src/types/mod.rs` | ✅ | ~110 | `Message`, `Role` (System/User/Assistant/Tool), `ChatRequest`, `ChatResponse`, `TokenUsage`, `ChatChunk`, `Delta`, `RequestId`. References tests module. |
+| `src/types/mod.rs` | ✅ | ~115 | `Message`, `Role` (System/User/Assistant/Tool), `ChatRequest`, `ChatResponse`, `TokenUsage`, `ChatChunk` (with `model` field), `Delta`, `RequestId`. References tests module. |
 | `src/types/tests.rs` | ✅ | ~200 | 13 tests: TokenUsage calculation, RequestId UUID validation, serialization roundtrips, serde defaults, skip_serializing_if behavior |
 | `src/providers/traits.rs` | ✅ | ~40 | `Provider` trait: `complete_chat()`, `stream_chat()`, `name()`, `supports_streaming()`, `supported_models()`, `supports_model()` |
 | `src/providers/mod.rs` | ✅ | ~10 | Module declarations and re-exports for all providers |
-| `src/providers/openai.rs` | ✅ | ~300 | Full implementation. Models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo. SSE streaming via `bytes_stream()`. |
-| `src/providers/anthropic.rs` | ✅ | ~325 | Full implementation. Models: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307. SSE streaming with event types. |
+| `src/providers/openai/mod.rs` | ✅ | ~302 | Full implementation (directory module). Models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo. SSE streaming via `bytes_stream()`. |
+| `src/providers/openai/tests.rs` | ✅ | ~154 | Provider tests for OpenAI |
+| `src/providers/anthropic/mod.rs` | ✅ | ~331 | Full implementation (directory module). Models: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307. SSE streaming with event types. |
 | `src/providers/google.rs` | ⚠️ Stub | ~65 | Implements `Provider` trait. Supports gemini-2.0-flash, gemini-2.0-pro, gemini-1.5-flash, gemini-1.5-pro. Returns `Err(Internal)` for API calls. |
 | `src/providers/custom.rs` | ⚠️ Stub | ~70 | Generic OpenAI-compatible provider. Configurable model list. Returns placeholder responses. |
-| `src/router/mod.rs` | ✅ | ~165 | `Router` struct with `new()`, `route()`, `get_provider()`, `available_providers()`, `available_models()`, `is_model_supported()`. Factory creates providers by name. References tests module. |
+| `src/router/mod.rs` | ✅ | ~200 | `Router` struct with `new()`, `route()`, `route_stream()`, `resolve_provider()`, `get_provider()`, `available_providers()`, `available_models()`, `available_models_with_providers()`, `is_model_supported()`. Factory creates providers by name. References tests module. |
 | `src/router/tests.rs` | ✅ | ~120 | 6 tests: router creation, available providers/models, model support, invalid config, get provider |
 | `src/middleware/mod.rs` | ⚠️ Partial | ~285 | Contains 4 middleware structs (see below). References tests module. **Not Tower layers.** |
 | `src/middleware/tests.rs` | ✅ | ~95 | 4 tests: rate limiter creation, cache operations, auth middleware, cost meter |
@@ -87,11 +88,12 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 
 | File | Status | Lines | Description |
 |------|--------|-------|-------------|
-| `src/lib.rs` | ✅ | 2 | Module declarations: `pub mod handlers;`, `pub mod middleware;` |
-| `src/main.rs` | ✅ | 99 | Full axum server: config loading, CORS, TraceLayer, routes (`/health`, `/v1/chat/completions`), graceful shutdown (ctrl_c + SIGTERM), tracing subscriber |
-| `src/handlers/mod.rs` | ✅ | 2 | Re-exports `chat` and `health` |
-| `src/handlers/chat.rs` | ⚠️ Stub | 55 | `POST /v1/chat/completions`. Parses `ChatRequest`, validates non-empty messages. **Returns placeholder echo response** — does NOT use Router. Has TODO comment. |
+| `src/lib.rs` | ✅ | ~12 | Module declarations: `pub mod handlers;`, `pub mod middleware;`. Defines `AppState` struct with `Arc<Router>`. |
+| `src/main.rs` | ✅ | ~107 | Full axum server: config loading, CORS, TraceLayer, routes (`/health`, `/v1/chat/completions`, `/v1/models`), graceful shutdown (ctrl_c + SIGTERM), tracing subscriber. Initializes `Router` from config and passes via `Extension`. |
+| `src/handlers/mod.rs` | ✅ | 3 | Re-exports `chat`, `health`, and `models` |
+| `src/handlers/chat.rs` | ✅ | ~110 | `POST /v1/chat/completions`. Routes to providers via `Router`. Handles both streaming (SSE) and non-streaming responses. OpenAI-compatible format. |
 | `src/handlers/health.rs` | ✅ | ~20 | `GET /health` returns `200 OK` with `{"status": "ok"}` |
+| `src/handlers/models.rs` | ✅ | ~30 | `GET /v1/models` returns list of available models across all providers. OpenAI-compatible format. |
 | `src/middleware/mod.rs` | ✅ | 1 | Empty placeholder module |
 
 ### `gateway-cli` (fully implemented for Phase 1)
@@ -124,7 +126,7 @@ ChatResponse { id: String, content: String, usage: TokenUsage, model: String,
 Message { role: Role, content: String, name: Option<String> }
 Role = System | User | Assistant | Tool
 TokenUsage { prompt_tokens: u32, completion_tokens: u32, total_tokens: u32 }
-ChatChunk { id: String, delta: Delta, finish_reason: Option<String>, usage: Option<TokenUsage> }
+ChatChunk { id: String, model: String, delta: Delta, finish_reason: Option<String>, usage: Option<TokenUsage> }
 Delta { role: Option<String>, content: Option<String> }
 ```
 
@@ -154,47 +156,33 @@ Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<V
 ## What Works Now
 
 1. **Workspace compiles** — `cargo build --workspace` succeeds
-2. **64 tests passing** — `cargo test --workspace` succeeds, `cargo clippy --workspace -- -D warnings` clean
+2. **~70 tests passing** — `cargo test --workspace` succeeds, `cargo clippy --workspace -- -D warnings` clean
 3. **Config loading** — YAML/TOML/JSON with `${ENV_VAR}` resolution and validation
 4. **Config files exist** — `config/default.yaml` and `config/example.yaml` with full documentation
-5. **Router** — Creates providers from config, routes requests with fallback, validates model support
-6. **OpenAI/Anthropic providers** — Full `complete_chat()` and `stream_chat()` implementations with SSE parsing
+5. **Router** — Creates providers from config, routes requests with fallback, validates model support, streaming support via `route_stream()`
+6. **OpenAI/Anthropic providers** — Full `complete_chat()` and `stream_chat()` implementations with SSE parsing (directory modules with tests)
 7. **HTTP server** — Starts, serves routes, handles graceful shutdown
 8. **Health endpoint** — `GET /health` returns 200
-9. **Chat endpoint** — `POST /v1/chat/completions` accepts requests but returns echo/placeholder
-10. **CLI** — Config validation, status display
-11. **Middleware structs** — Rate limiter, cache, auth, cost meter all have working logic with tests
-12. **Tests separated** — All test modules are in dedicated `tests.rs` files for easier maintenance
+9. **Chat endpoint** — `POST /v1/chat/completions` routes to providers, supports both streaming (SSE) and non-streaming
+10. **Models endpoint** — `GET /v1/models` lists all available models across providers
+11. **CLI** — Config validation, status display
+12. **Middleware structs** — Rate limiter, cache, auth, cost meter all have working logic with tests
+13. **Tests separated** — All test modules are in dedicated `tests.rs` files for easier maintenance
 
 ## What Doesn't Work Yet
 
-1. **Chat handler doesn't use Router** — Returns placeholder instead of routing to providers
-2. **No SSE streaming in API** — Provider `stream_chat()` exists but isn't called from any handler
-3. **Middleware not wired as Tower layers** — Structs exist but aren't in the HTTP middleware pipeline
-4. **No `/v1/models` endpoint**
-5. **No `/ready` readiness probe**
-6. **No OpenTelemetry**
-7. **No Docker/K8s/CI**
-8. **No integration tests**
-9. **No tests for gateway-api or gateway-cli**
-10. **No tests for provider implementations** (only router tests verify provider creation)
+1. **Middleware not wired as Tower layers** — Structs exist but aren't in the HTTP middleware pipeline
+2. **No `/ready` readiness probe**
+3. **No OpenTelemetry**
+4. **No Docker/K8s/CI**
+5. **No integration tests**
+6. **No tests for gateway-api or gateway-cli**
 
 ---
 
 ## Immediate Next Steps (Prioritized)
 
-### 1. Wire Router into Chat Handler (unlocks core functionality)
-- Create `AppState` struct with `Router` (wrapped in `Arc`)
-- Initialize `Router` in `main.rs` from config
-- Update `chat.rs` handler to use `Router::route()` instead of returning placeholder
-- This makes `POST /v1/chat/completions` actually call OpenAI/Anthropic
-
-### 2. Add SSE Streaming to Chat Handler
-- When `request.stream == true`, call `Router` (needs stream variant) or `Provider::stream_chat()`
-- Map `ChatChunk` stream to SSE events
-- Return `Sse<impl Stream<Item = Result<Event, Infallible>>>`
-
-### 3. Wire Middleware as Tower Layers
+### 1. Wire Middleware as Tower Layers
 - Wrap `ProviderRateLimiter`, `ChatCache`, `AuthMiddleware`, `CostMeter` as Tower `Service`/`Layer` types
 - Add them to the router in `main.rs`
 
@@ -254,5 +242,4 @@ All workspace dependencies are defined in root `Cargo.toml`:
 - **Streaming**: Providers use `reqwest::bytes_stream()` + `futures::StreamExt` to parse SSE
 - **Config flow**: YAML file → `load_config_with_env()` → `GatewayConfig` → `Router::new()` → providers
 - **Test structure**: Each module has a separate `tests.rs` file referenced via `#[cfg(test)] mod tests;`
-- **API flow** (current): Request → parse JSON → placeholder response (Router not wired)
-- **API flow** (target): Request → parse JSON → `Router::route()` → `Provider::complete_chat()` → response
+- **API flow**: Request → parse JSON → `Router::route()`/`route_stream()` → `Provider::complete_chat()`/`stream_chat()` → response/SSE stream
