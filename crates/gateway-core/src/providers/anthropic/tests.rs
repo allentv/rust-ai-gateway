@@ -3,10 +3,10 @@ use std::time::Duration;
 use super::*;
 use crate::types::{ChatRequest, Message, Role};
 
-fn create_provider() -> OpenAiProvider {
-    OpenAiProvider::new(
+fn create_provider() -> AnthropicProvider {
+    AnthropicProvider::new(
         "test-api-key".to_string(),
-        "https://api.openai.com/v1".to_string(),
+        "https://api.anthropic.com/v1".to_string(),
     )
 }
 
@@ -28,7 +28,7 @@ fn create_request(model: &str) -> ChatRequest {
 #[test]
 fn test_provider_name() {
     let provider = create_provider();
-    assert_eq!(provider.name(), "openai");
+    assert_eq!(provider.name(), "anthropic");
 }
 
 #[test]
@@ -41,26 +41,26 @@ fn test_supports_streaming() {
 fn test_supported_models() {
     let provider = create_provider();
     let models = provider.supported_models();
-    assert!(models.contains(&"gpt-4o"));
-    assert!(models.contains(&"gpt-4o-mini"));
-    assert!(models.contains(&"gpt-4-turbo"));
-    assert!(models.contains(&"gpt-4"));
-    assert!(models.contains(&"gpt-3.5-turbo"));
-    assert_eq!(models.len(), 5);
+    assert!(models.contains(&"claude-sonnet-4-20250514"));
+    assert!(models.contains(&"claude-3-5-sonnet-20241022"));
+    assert!(models.contains(&"claude-3-5-haiku-20241022"));
+    assert!(models.contains(&"claude-3-opus-20240229"));
+    assert!(models.contains(&"claude-3-sonnet-20240229"));
+    assert!(models.contains(&"claude-3-haiku-20240307"));
+    assert_eq!(models.len(), 6);
 }
 
 #[test]
 fn test_supports_model_known() {
     let provider = create_provider();
-    assert!(provider.supports_model("gpt-4o"));
-    assert!(provider.supports_model("gpt-4"));
-    assert!(provider.supports_model("gpt-3.5-turbo"));
+    assert!(provider.supports_model("claude-3-5-sonnet-20241022"));
+    assert!(provider.supports_model("claude-3-opus-20240229"));
 }
 
 #[test]
 fn test_supports_model_unknown() {
     let provider = create_provider();
-    assert!(!provider.supports_model("claude-3-opus"));
+    assert!(!provider.supports_model("gpt-4o"));
     assert!(!provider.supports_model("nonexistent-model"));
 }
 
@@ -76,7 +76,7 @@ fn test_complete_chat_unsupported_model() {
     match result.unwrap_err() {
         GatewayError::ModelNotSupported { model, provider: p } => {
             assert_eq!(model, "unsupported-model");
-            assert_eq!(p, "openai");
+            assert_eq!(p, "anthropic");
         }
         other => panic!("Expected ModelNotSupported, got: {:?}", other),
     }
@@ -93,7 +93,7 @@ fn test_stream_chat_unsupported_model() {
     match result {
         Err(GatewayError::ModelNotSupported { model, provider: p }) => {
             assert_eq!(model, "unsupported-model");
-            assert_eq!(p, "openai");
+            assert_eq!(p, "anthropic");
         }
         other => panic!("Expected ModelNotSupported, got stream result"),
     }
@@ -124,44 +124,36 @@ fn test_convert_messages() {
         },
     ];
 
-    let converted = OpenAiProvider::convert_messages(&messages);
-    assert_eq!(converted.len(), 4);
-    assert_eq!(converted[0].role, "system");
-    assert_eq!(converted[1].role, "user");
-    assert_eq!(converted[1].name, Some("user1".to_string()));
-    assert_eq!(converted[2].role, "assistant");
-    assert_eq!(converted[3].role, "tool");
-}
-
-#[test]
-fn test_map_role() {
-    assert_eq!(
-        OpenAiProvider::map_role(Some("assistant".to_string())),
-        Some("assistant".to_string())
-    );
-    assert_eq!(OpenAiProvider::map_role(None), None);
-    assert_eq!(OpenAiProvider::map_role(Some("".to_string())), None);
+    let (system, converted) = AnthropicProvider::convert_messages(&messages);
+    assert_eq!(system, Some("You are a helper".to_string()));
+    assert_eq!(converted.len(), 3);
+    assert_eq!(converted[0].role, "user");
+    assert_eq!(converted[0].content, "Hi");
+    assert_eq!(converted[1].role, "assistant");
+    assert_eq!(converted[1].content, "Hello!");
+    assert_eq!(converted[2].role, "user");
+    assert_eq!(converted[2].content, "tool result");
 }
 
 #[test]
 fn test_new_provider_stores_config() {
-    let provider = OpenAiProvider::new(
+    let provider = AnthropicProvider::new(
         "my-key".to_string(),
         "https://custom.api.com/v1".to_string(),
     );
-    assert_eq!(provider.name(), "openai");
+    assert_eq!(provider.name(), "anthropic");
     assert_eq!(provider.api_key, "my-key");
     assert_eq!(provider.base_url, "https://custom.api.com/v1");
 }
 
 #[test]
 fn test_with_timeout_provider() {
-    let provider = OpenAiProvider::with_timeout(
+    let provider = AnthropicProvider::with_timeout(
         "my-key".to_string(),
         "https://custom.api.com/v1".to_string(),
         Duration::from_secs(60),
     );
-    assert_eq!(provider.name(), "openai");
+    assert_eq!(provider.name(), "anthropic");
     assert_eq!(provider.api_key, "my-key");
     assert_eq!(provider.base_url, "https://custom.api.com/v1");
 }

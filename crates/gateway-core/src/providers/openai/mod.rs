@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use futures::stream::BoxStream;
 use futures::StreamExt;
@@ -92,9 +94,21 @@ pub struct OpenAiProvider {
     base_url: String,
 }
 
+/// Default request timeout for OpenAI API calls (30 seconds)
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+
 impl OpenAiProvider {
+    /// Create a new OpenAI provider with default timeout
     pub fn new(api_key: String, base_url: String) -> Self {
-        let client = reqwest::Client::new();
+        Self::with_timeout(api_key, base_url, DEFAULT_TIMEOUT)
+    }
+
+    /// Create a new OpenAI provider with a custom request timeout
+    pub fn with_timeout(api_key: String, base_url: String, timeout: Duration) -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(timeout)
+            .build()
+            .expect("Failed to build reqwest client");
         Self {
             client,
             api_key,
