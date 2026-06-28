@@ -94,9 +94,16 @@ rust-ai-gateway/
 │   ├── gateway-api/              # HTTP API layer (axum handlers)
 │   ├── gateway-cli/              # CLI tool for configuration and management
 │   └── gateway-config/           # Configuration schemas and validation
+├── config/
+│   ├── default.yaml              # Default configuration
+│   └── example.yaml              # Detailed example with comments
 ├── docs/
 │   ├── implementation-plan.md    # Detailed implementation plan
-│   └── initial-idea.md           # Initial project idea
+│   ├── initial-idea.md           # Initial project idea
+│   ├── phase-1-foundation.md     # Phase 1 task tracker
+│   ├── phase-2-core.md           # Phase 2 task tracker
+│   ├── phase-3-middleware.md     # Phase 3 task tracker
+│   └── phase-4-production.md     # Phase 4 task tracker
 ├── .agents/
 │   ├── rules.md                  # Project rules and conventions
 │   ├── commands/                 # Agent command definitions
@@ -110,6 +117,7 @@ rust-ai-gateway/
 │       ├── add-tests.md
 │       └── debug-errors.md
 ├── AGENTS.md                     # AI session guidelines
+├── ai-session-context.md         # Current project state snapshot
 └── RUNBOOK.md                    # This file
 ```
 
@@ -134,10 +142,12 @@ rust-ai-gateway/
 ```rust
 #[async_trait]
 pub trait Provider: Send + Sync {
-    async fn complete_chat(&self, request: ChatRequest) -> Result<ChatResponse, ProviderError>;
-    async fn stream_chat(&self, request: ChatRequest) -> Result<ChatStream, ProviderError>;
+    async fn complete_chat(&self, request: ChatRequest) -> Result<ChatResponse, GatewayError>;
+    async fn stream_chat(&self, request: ChatRequest) -> Result<BoxStream<'static, Result<ChatChunk, GatewayError>>, GatewayError>;
     fn name(&self) -> &str;
-    fn supports_streaming(&self) -> bool;
+    fn supports_streaming(&self) -> bool { true }
+    fn supported_models(&self) -> Vec<&str>;
+    fn supports_model(&self, model: &str) -> bool { ... }
 }
 ```
 
@@ -157,7 +167,10 @@ Configuration supports both YAML and TOML formats. Environment variables can be 
 ### Configuration Files
 
 - Schema definitions: `crates/gateway-config/src/schema.rs`
-- Validation logic: `crates/gateway-config/src/validation.rs`
+- Validation logic: `crates/gateway-config/src/validation/mod.rs`
+- Validation tests: `crates/gateway-config/src/validation/tests.rs`
+- Default config: `config/default.yaml`
+- Example config: `config/example.yaml`
 
 ## Troubleshooting
 
@@ -221,15 +234,7 @@ Configuration supports both YAML and TOML formats. Environment variables can be 
 
 ## CI/CD
 
-### GitHub Actions
-
-- **CI Pipeline**: `.github/workflows/ci.yml`
-- **Release Automation**: `.github/workflows/release.yml`
-
-### Docker
-
-- **Dockerfile**: `Dockerfile`
-- **Docker Compose**: `docker-compose.yml`
+> **Note**: CI/CD pipeline, Docker, and GitHub Actions configuration are planned for Phase 4 but not yet implemented.
 
 ## Common Pitfalls
 
@@ -241,11 +246,11 @@ Configuration supports both YAML and TOML formats. Environment variables can be 
 ## Development Workflow
 
 1. **Local development**: `mise run build` then `cargo run --bin gateway-api`
-2. **Testing**: `mise run test`
+2. **Testing**: `mise run test` (64 tests across gateway-config and gateway-core)
 3. **Linting**: `mise run lint`
 4. **Formatting**: `mise run fmt`
 5. **Build**: `mise run build-release`
-6. **Docker**: `docker build -t rust-ai-gateway .`
+6. **Health check**: `mise run check` (lint + fmt-check + test)
 
 ---
 

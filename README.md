@@ -53,7 +53,7 @@ rust-ai-gateway/
 | HTTP Client | [reqwest](https://github.com/seanmonstar/reqwest) (streaming + rustls-tls) |
 | Serialization | [serde](https://github.com/serde-rs/serde) + serde_yaml / serde_toml / serde_json |
 | Rate Limiting | [governor](https://github.com/antifuchs/governor) |
-| Caching | [moka](https://github.com/gregory-m/moka) (planned) |
+| Caching | [moka](https://github.com/gregory-m/moka) |
 | Middleware | [tower](https://github.com/tower-rs/tower) + [tower-http](https://github.com/tower-rs/tower-http) |
 | CLI | [clap](https://github.com/clap-rs/clap) |
 | Error Handling | [thiserror](https://github.com/dtolnay/thiserror) + [anyhow](https://github.com/dtolnay/anyhow) |
@@ -63,7 +63,7 @@ rust-ai-gateway/
 
 ### Prerequisites
 
-- [Rust](https://www.rust-lang.org/tools/install) 1.75+ (edition 2021)
+- [Rust](https://www.rust-lang.org/tools/install) 1.96+ (edition 2021)
 - [Cargo](https://doc.rust-lang.org/cargo/) (included with Rust)
 
 ### Build
@@ -225,21 +225,41 @@ The gateway returns structured error responses with appropriate HTTP status code
 crates/
 ├── gateway-core/src/
 │   ├── lib.rs                  # Core library entry point
-│   ├── types.rs                # ChatRequest, ChatResponse, Message, Role, TokenUsage, etc.
-│   ├── error.rs                # GatewayError enum with HTTP status mapping
-│   └── providers/
-│       ├── traits.rs           # Provider trait definition
-│       ├── openai.rs           # OpenAI API implementation
-│       ├── anthropic.rs        # Anthropic API implementation
-│       └── mod.rs              # Provider module exports
+│   ├── config.rs               # Config loading wrapper
+│   ├── types/mod.rs            # ChatRequest, ChatResponse, Message, Role, TokenUsage, etc.
+│   ├── types/tests.rs          # Type serialization and unit tests
+│   ├── error/mod.rs            # GatewayError enum with HTTP status mapping
+│   ├── error/tests.rs          # Error constructor and HTTP mapping tests
+│   ├── providers/
+│   │   ├── traits.rs           # Provider trait definition
+│   │   ├── openai.rs           # OpenAI API implementation
+│   │   ├── anthropic.rs        # Anthropic API implementation
+│   │   ├── google.rs           # Google (stub) implementation
+│   │   ├── custom.rs           # Custom provider (stub) implementation
+│   │   └── mod.rs              # Provider module exports
+│   ├── router/
+│   │   ├── mod.rs              # Router: provider selection and request routing
+│   │   └── tests.rs            # Router unit tests
+│   └── middleware/
+│       ├── mod.rs              # Rate limiter, cache, auth, cost meter
+│       └── tests.rs            # Middleware unit tests
 ├── gateway-config/src/
-│   ├── lib.rs                  # Config loading (YAML/TOML)
+│   ├── lib.rs                  # Module declarations
 │   ├── schema.rs               # Configuration schema structs
-│   └── validation.rs           # Config validation logic
+│   ├── validation/mod.rs       # Config validation logic
+│   └── validation/tests.rs     # Config validation tests (25 tests)
 ├── gateway-api/
-│   └── Cargo.toml              # API server binary
+│   └── src/
+│       ├── main.rs             # Axum server entry point
+│       ├── handlers/           # Chat completions, health check endpoints
+│       └── middleware/         # HTTP middleware (placeholder)
 └── gateway-cli/
-    └── Cargo.toml              # CLI binary
+    └── src/
+        ├── main.rs             # CLI entry point (clap)
+        └── commands/           # Config, status, cache subcommands
+config/
+├── default.yaml                # Default configuration
+└── example.yaml                # Detailed example with comments
 ```
 
 ### Useful Commands
@@ -276,33 +296,42 @@ This project is under active development. Here is the current implementation sta
 
 ### Phase 1: Foundation ✅
 - [x] Cargo workspace setup
-- [x] Core types (`ChatRequest`, `ChatResponse`, `Message`, `Role`, `TokenUsage`)
+- [x] Core types (`ChatRequest`, `ChatResponse`, `Message`, `Role`, `TokenUsage`, `ChatChunk`, `Delta`, `RequestId`)
 - [x] Error types with HTTP status mapping
 - [x] Provider trait definition with async streaming support
-- [x] Configuration schema and validation
-- [x] OpenAI provider implementation
-- [x] Anthropic provider implementation
+- [x] Configuration schema and validation (YAML/TOML/JSON)
+- [x] OpenAI provider implementation (with SSE streaming)
+- [x] Anthropic provider implementation (with SSE streaming)
+- [x] Google and Custom provider stubs
+- [x] Router with provider selection and fallback
+- [x] Middleware structs (rate limiter, cache, auth, cost meter)
+- [x] HTTP API server with axum (health check, chat endpoint)
+- [x] CLI with config validation and status display
+- [x] Default and example configuration files
+- [x] 64 unit tests, clippy clean
 
 ### Phase 2: Core Functionality 🔧
-- [ ] HTTP API endpoints (axum)
-- [ ] Request routing logic
-- [ ] SSE streaming passthrough
-- [ ] Provider request/response transformation
+- [x] HTTP API endpoints (axum) — basic endpoints exist
+- [x] Request routing logic — Router implemented
+- [ ] SSE streaming passthrough (providers support it, API handler not wired)
+- [ ] Wire Router into chat handler (currently returns placeholder)
 
 ### Phase 3: Middleware & Features 🔧
-- [ ] Rate limiting (governor)
-- [ ] Cost metering
-- [ ] Response caching (moka)
+- [x] Rate limiting (governor) — struct exists, not wired as Tower layer
+- [x] Cost metering — struct exists, not wired
+- [x] Response caching (moka) — struct exists, not wired
 - [ ] OpenTelemetry integration
-- [ ] Authentication middleware
+- [x] Authentication middleware — struct exists, not wired
 - [ ] Configuration hot-reload
 
 ### Phase 4: Production Readiness 🔧
-- [ ] Graceful shutdown
-- [ ] Health checks and readiness probes
+- [x] Graceful shutdown
+- [x] Health checks (basic `/health` endpoint)
+- [ ] Readiness probe (`/ready`)
 - [ ] Docker and Kubernetes deployment
 - [ ] CI/CD pipeline (GitHub Actions)
 - [ ] Comprehensive documentation
+- [ ] Integration tests
 
 ## Contributing
 
