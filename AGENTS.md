@@ -39,32 +39,40 @@ rust-ai-gateway/
 ## Code Style & Conventions
 
 ### Rust Edition
+
 - **Edition**: 2021
 
 ### Formatting
+
 - Use `cargo fmt` before committing — all code must be formatted
 - Run `cargo fmt --check` to verify formatting
 
 ### Linting
+
 - Use `cargo clippy --workspace` — fix all warnings before committing
 - Run `cargo clippy --workspace -- -D warnings` to enforce
 
 ### Error Handling
+
 - Use `thiserror` for library error types
 - Use `anyhow` for application-level errors
 - All `GatewayError` variants must map to appropriate HTTP status codes
 
 ### Async
+
 - Use `tokio` as the async runtime
 - Use `async-trait` for async trait methods
 
 ### Serialization
+
 - Use `serde` with derive macros for all serializable types
 
 ### Logging
+
 - Use `tracing` (not `log`) for all logging and instrumentation
 
 ### Naming
+
 - Follow Rust API Guidelines:
   - `snake_case` for functions/variables
   - `CamelCase` for types
@@ -73,6 +81,7 @@ rust-ai-gateway/
 ## Testing Requirements
 
 ### General Rules
+
 - Run `cargo test --workspace` to execute all tests
 - Run `cargo test -p <crate-name>` to test a specific crate
 - **Tests must always be in separate files** — never write inline `#[cfg(test)] mod tests { ... }` blocks. Instead:
@@ -84,6 +93,7 @@ rust-ai-gateway/
 - Add tests for new functionality where practical
 
 ### Test Commands
+
 ```bash
 # Run all tests
 mise run test
@@ -96,6 +106,7 @@ mise run test-crate gateway-core
 ```
 
 ### Test Best Practices
+
 1. **Test file structure**: Tests must always be in separate `tests.rs` files, referenced via `#[cfg(test)] mod tests;`
 2. **Test isolation**: Each test should be independent and not rely on other tests
 3. **Test naming**: Use descriptive test names that explain what is being tested
@@ -105,6 +116,7 @@ mise run test-crate gateway-core
 ## Build & CI
 
 ### Build Commands
+
 ```bash
 # Development build
 mise run build
@@ -117,6 +129,7 @@ mise run clean
 ```
 
 ### Linting & Formatting
+
 ```bash
 # Format all code
 mise run fmt
@@ -132,6 +145,7 @@ mise run check
 ```
 
 ### Other Commands
+
 ```bash
 # Update dependencies
 mise run update
@@ -157,7 +171,7 @@ Each crate has its own `AGENTS.md` file that provides detailed context about the
 
 | Crate | AGENTS.md | Summary |
 |-------|-----------|---------|
-| `gateway-core` | [crates/gateway-core/AGENTS.md](crates/gateway-core/AGENTS.md) | Core library: providers, types, errors, routing (planned), middleware (planned) |
+| `gateway-core` | [crates/gateway-core/AGENTS.md](crates/gateway-core/AGENTS.md) | Core library: providers, types, errors, routing, middleware (structs exist, not Tower layers) |
 | `gateway-api` | [crates/gateway-api/AGENTS.md](crates/gateway-api/AGENTS.md) | HTTP API layer: axum handlers, SSE streaming, server entry point |
 | `gateway-cli` | [crates/gateway-cli/AGENTS.md](crates/gateway-cli/AGENTS.md) | CLI tool: config validation, status, cache management |
 | `gateway-config` | [crates/gateway-config/AGENTS.md](crates/gateway-config/AGENTS.md) | Configuration: schemas, validation, YAML/TOML/JSON loading |
@@ -220,20 +234,24 @@ providers:
 ## Common Pitfalls
 
 ### Streaming
+
 - The gateway must handle SSE streaming without buffering
 - Use `reqwest`'s streaming capabilities
 - Implement `Stream` for SSE responses
 - Use `tokio::sync::mpsc` for streaming relay
 
 ### Error Mapping
+
 - All `GatewayError` variants must map to appropriate HTTP status codes
 - Implement `From<GatewayError> for (StatusCode, Json<Value>)`
 
 ### Provider Isolation
+
 - Each provider implementation should be self-contained
 - Do not depend on other providers
 
 ### Config Validation
+
 - Configuration must be validated at startup, not at request time
 - Use `gateway-config/src/validation.rs` for validation logic
 
@@ -254,13 +272,14 @@ providers:
 2. **Explore the codebase**: Use `read_file`, `search_files`, and `list_files` to understand the project structure
 3. **Check existing code**: Look for similar patterns and implementations
 4. **Implement changes**: Make changes following the code style and conventions
-5. **Test changes**: Run `mise run test` to verify changes
+5. **Test changes**: Run `mise run test` to verify changes (89 tests across workspace)
 6. **Lint and format**: Run `mise run lint` and `mise run fmt` to ensure code quality
 7. **Commit changes**: Follow the project's commit message conventions
 
 ### Common Tasks
 
 #### Adding a New Provider
+
 1. Create a new file in `crates/gateway-core/src/providers/`
 2. Implement the `Provider` trait
 3. Add the provider to `mod.rs`
@@ -269,12 +288,14 @@ providers:
 6. Add tests for the new provider
 
 #### Adding Middleware
+
 1. Create a new file in `crates/gateway-core/src/middleware/`
 2. Implement the middleware using Tower's middleware pattern
 3. Add the middleware to the server pipeline
 4. Add tests for the middleware
 
 #### Fixing Bugs
+
 1. Understand the bug and reproduce it
 2. Locate the relevant code
 3. Fix the issue
@@ -284,6 +305,7 @@ providers:
 ## Agent Commands
 
 ### Build
+
 ```bash
 # Development build
 mise run build
@@ -293,12 +315,14 @@ mise run build-release
 ```
 
 ### Check
+
 ```bash
 # Full health check
 mise run check
 ```
 
 ### Format
+
 ```bash
 # Format all code
 mise run fmt
@@ -308,6 +332,7 @@ mise run fmt-check
 ```
 
 ### Test
+
 ```bash
 # Run all tests
 mise run test
@@ -320,6 +345,7 @@ mise run test-crate gateway-core
 ```
 
 ### Lint
+
 ```bash
 # Run clippy
 mise run lint
@@ -328,12 +354,14 @@ mise run lint
 ## Skills
 
 ### Adding Middleware
+
 - Create a new file in `crates/gateway-core/src/middleware/`
 - Implement the middleware using Tower's middleware pattern
 - Add the middleware to the server pipeline
 - Add tests for the middleware
 
 ### Adding Provider
+
 - Create a new file in `crates/gateway-core/src/providers/`
 - Implement the `Provider` trait from `traits.rs`
 - Add the provider to `mod.rs` re-exports
@@ -341,6 +369,7 @@ mise run lint
 - Update validation in `gateway-config/src/validation.rs`
 
 ### Adding Tests
+
 - **Always put tests in separate files** — never write inline test modules
 - For a single file `foo.rs`, convert it to `foo/mod.rs` + `foo/tests.rs`
 - For an existing module directory `bar/mod.rs`, add `bar/tests.rs`
@@ -351,6 +380,7 @@ mise run lint
 - Ensure tests are independent and isolated
 
 ### Debugging Errors
+
 - Check error messages and stack traces
 - Use `cargo clippy --workspace` for lint warnings
 - Use `cargo fmt --check` for formatting issues

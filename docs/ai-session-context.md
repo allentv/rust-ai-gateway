@@ -21,8 +21,8 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 
 | Phase | Status | Summary |
 |-------|--------|---------|
-| Phase 1: Foundation | ✅ 100% complete | All crates compile, have source files, config files exist, 64 tests passing, clippy clean |
-| Phase 2: Core | ~75% complete | Router fully implemented and wired to API. Chat handler routes to providers. SSE streaming integrated. `/v1/models` endpoint exists. |
+| Phase 1: Foundation | ✅ 100% complete | All crates compile, have source files, config files exist, 89 tests passing, clippy clean |
+| Phase 2: Core | ~85% complete | Router fully implemented and wired to API. Chat handler routes to providers. SSE streaming integrated. `/v1/models` endpoint exists. OpenAI (11 tests) and Anthropic (10 tests) providers with full streaming support. |
 | Phase 3: Middleware | ~40% complete | Core middleware structs exist with tests. **None are Tower layers. None are wired into HTTP pipeline.** No OpenTelemetry. |
 | Phase 4: Production | ~10% complete | Graceful shutdown implemented. Basic health check exists. No Docker/K8s/CI/CD/docs/integration tests. |
 
@@ -35,10 +35,10 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 | Crate | Tests | Status |
 |-------|-------|--------|
 | `gateway-config` | 25 | ✅ All passing (validation, loading, env var resolution) |
-| `gateway-core` | ~45 | ✅ All passing (types, errors, router, middleware, openai tests) |
+| `gateway-core` | 64 | ✅ All passing (types: 13, error: 13, router: 10, middleware: 4, openai: 11, anthropic: 10) |
 | `gateway-api` | 0 | — No tests yet (handlers now fully wired) |
 | `gateway-cli` | 0 | — No tests yet |
-| **Total** | **~70** | ✅ `cargo test --workspace` passes, `cargo clippy --workspace -- -D warnings` clean |
+| **Total** | **89** | ✅ `cargo test --workspace` passes, `cargo clippy --workspace -- -D warnings` clean |
 
 ---
 
@@ -66,16 +66,17 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 | `src/providers/traits.rs` | ✅ | ~40 | `Provider` trait: `complete_chat()`, `stream_chat()`, `name()`, `supports_streaming()`, `supported_models()`, `supports_model()` |
 | `src/providers/mod.rs` | ✅ | ~10 | Module declarations and re-exports for all providers |
 | `src/providers/openai/mod.rs` | ✅ | ~302 | Full implementation (directory module). Models: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo. SSE streaming via `bytes_stream()`. |
-| `src/providers/openai/tests.rs` | ✅ | ~154 | Provider tests for OpenAI |
+| `src/providers/openai/tests.rs` | ✅ | ~154 | 11 tests: provider name, streaming, models, message conversion, role mapping, config storage, unsupported model errors |
 | `src/providers/anthropic/mod.rs` | ✅ | ~331 | Full implementation (directory module). Models: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307. SSE streaming with event types. |
+| `src/providers/anthropic/tests.rs` | ✅ | ~155 | 10 tests: provider name, streaming, models, message conversion with system extraction, config storage, unsupported model errors |
 | `src/providers/google.rs` | ⚠️ Stub | ~65 | Implements `Provider` trait. Supports gemini-2.0-flash, gemini-2.0-pro, gemini-1.5-flash, gemini-1.5-pro. Returns `Err(Internal)` for API calls. |
 | `src/providers/custom.rs` | ⚠️ Stub | ~70 | Generic OpenAI-compatible provider. Configurable model list. Returns placeholder responses. |
 | `src/router/mod.rs` | ✅ | ~200 | `Router` struct with `new()`, `route()`, `route_stream()`, `resolve_provider()`, `get_provider()`, `available_providers()`, `available_models()`, `available_models_with_providers()`, `is_model_supported()`. Factory creates providers by name. References tests module. |
-| `src/router/tests.rs` | ✅ | ~120 | 6 tests: router creation, available providers/models, model support, invalid config, get provider |
+| `src/router/tests.rs` | ✅ | ~195 | 10 tests: router creation, available providers/models, model support, invalid config, get provider, resolve provider (4 tests for model-based selection with fallback) |
 | `src/middleware/mod.rs` | ⚠️ Partial | ~285 | Contains 4 middleware structs (see below). References tests module. **Not Tower layers.** |
 | `src/middleware/tests.rs` | ✅ | ~95 | 4 tests: rate limiter creation, cache operations, auth middleware, cost meter |
 
-### Middleware structs in `gateway-core/src/middleware/mod.rs`:
+### Middleware structs in `gateway-core/src/middleware/mod.rs`
 
 | Struct | Lines | Description |
 |--------|-------|-------------|
@@ -118,6 +119,7 @@ This file provides a snapshot of the project's current state for AI sessions. Re
 ## Key Types Quick Reference
 
 ### Request/Response flow types (`gateway-core/src/types/mod.rs`)
+
 ```
 ChatRequest { messages: Vec<Message>, model: String, max_tokens: Option<u32>,
               temperature: Option<f32>, stream: bool, provider: Option<String> }
@@ -131,6 +133,7 @@ Delta { role: Option<String>, content: Option<String> }
 ```
 
 ### Provider trait (`gateway-core/src/providers/traits.rs`)
+
 ```rust
 #[async_trait]
 pub trait Provider: Send + Sync {
@@ -144,11 +147,13 @@ pub trait Provider: Send + Sync {
 ```
 
 ### GatewayError variants (`gateway-core/src/error/mod.rs`)
+
 `Provider`, `ProviderNotFound`, `ModelNotSupported`, `Timeout`, `RateLimitExceeded`, `Authentication`, `Configuration`, `Serialization`, `Network`, `StreamClosed`, `Internal`
 
 Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<Value>)`.
 
 ### Config types (`gateway-config/src/schema.rs`)
+
 `GatewayConfig` → `ServerConfig` (host, port, workers), `providers: HashMap<String, ProviderConfig>`, `RoutingConfig` (default_provider, fallback_providers), `CacheConfig` (enabled, ttl_seconds, max_size), `TelemetryConfig`, `MeteringConfig`
 
 ---
@@ -156,11 +161,11 @@ Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<V
 ## What Works Now
 
 1. **Workspace compiles** — `cargo build --workspace` succeeds
-2. **~70 tests passing** — `cargo test --workspace` succeeds, `cargo clippy --workspace -- -D warnings` clean
+2. **89 tests passing** — `cargo test --workspace` succeeds, `cargo clippy --workspace -- -D warnings` clean
 3. **Config loading** — YAML/TOML/JSON with `${ENV_VAR}` resolution and validation
 4. **Config files exist** — `config/default.yaml` and `config/example.yaml` with full documentation
 5. **Router** — Creates providers from config, routes requests with fallback, validates model support, streaming support via `route_stream()`
-6. **OpenAI/Anthropic providers** — Full `complete_chat()` and `stream_chat()` implementations with SSE parsing (directory modules with tests)
+6. **OpenAI/Anthropic providers** — Full `complete_chat()` and `stream_chat()` implementations with SSE parsing (directory modules with 11 and 10 tests respectively)
 7. **HTTP server** — Starts, serves routes, handles graceful shutdown
 8. **Health endpoint** — `GET /health` returns 200
 9. **Chat endpoint** — `POST /v1/chat/completions` routes to providers, supports both streaming (SSE) and non-streaming
@@ -183,10 +188,12 @@ Each maps to an HTTP status code via `From<GatewayError> for (StatusCode, Json<V
 ## Immediate Next Steps (Prioritized)
 
 ### 1. Wire Middleware as Tower Layers
+
 - Wrap `ProviderRateLimiter`, `ChatCache`, `AuthMiddleware`, `CostMeter` as Tower `Service`/`Layer` types
 - Add them to the router in `main.rs`
 
 ### 4. Add More Tests
+
 - Integration tests for API endpoints (start server, send requests)
 - Tests for provider implementations (mock HTTP responses)
 - CLI command tests
@@ -202,7 +209,7 @@ mise run build              # Development build
 mise run build-release      # Release build
 
 # Test
-mise run test               # All tests (64 passing)
+mise run test               # All tests (89 passing)
 mise run test-output        # Tests with output
 mise run test-crate gateway-core   # Specific crate
 
@@ -225,6 +232,7 @@ cargo fmt --check
 ## Dependencies
 
 All workspace dependencies are defined in root `Cargo.toml`:
+
 - `tokio` (full), `axum` 0.7 (macros), `reqwest` 0.12 (stream, json, rustls-tls)
 - `serde`/`serde_json`/`serde_yaml`/`toml`, `thiserror`, `anyhow`
 - `tracing`/`tracing-subscriber` (env-filter, json)
