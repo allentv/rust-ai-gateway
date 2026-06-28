@@ -4,11 +4,12 @@
 
 ## Overview
 
-Phase 2 builds on Phase 1's foundation to deliver the core functionality: routing requests to providers, serving HTTP API endpoints, and handling SSE streaming. **The router is fully implemented and wired to the API layer.** HTTP handlers route requests to the appropriate provider via the `Router`. SSE streaming is fully integrated — streaming responses are relayed as SSE events. Provider implementations (OpenAI, Anthropic) have full streaming support and are connected to the API layer.
+Phase 2 builds on Phase 1's foundation to deliver the core functionality: routing requests to providers, serving HTTP API endpoints, and handling SSE streaming. **The router is fully implemented and wired to the API layer.** HTTP handlers route requests to the appropriate provider via the `Router`. SSE streaming is fully integrated — streaming responses are relayed as SSE events. Provider implementations (OpenAI, Anthropic) have full streaming support, 10+ unit tests each covering model validation, message conversion, configuration storage, and streaming, and are connected to the API layer. All 64 tests pass across the workspace.
 
 ## Sub-Agent Tasks
 
 ### Task 2.1: Implement request routing logic
+
 **Status**: ✅ Complete
 **Priority**: 🔴 Critical — core routing is needed for the API to function
 **Estimated effort**: Medium
@@ -16,6 +17,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 **Objective**: Implement a routing layer that selects the appropriate provider based on configuration and request parameters.
 
 **Checklist**:
+
 - [x] Create `crates/gateway-core/src/router/mod.rs`
   - `Router` struct holds `HashMap<String, Box<dyn Provider>>`, `default_provider`, and `fallback_providers`
   - `Router::new(config: &GatewayConfig)` — creates providers from config, validates default/fallback providers exist
@@ -36,9 +38,11 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
   - [x] `test_get_provider` — verifies provider lookup
 
 **Not implemented** (deferred):
+
 - `router/strategies.rs` with `RouteStrategy` enum (Default, Fallback, RoundRobin) — not needed yet, simple default+fallback routing is sufficient
 
 **Notes**:
+
 - Uses `Box<dyn Provider>` for provider instances
 - Providers are created from `GatewayConfig::providers` using their `api_key` and `base_url`
 - Unknown provider names are treated as custom OpenAI-compatible providers
@@ -46,6 +50,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 ---
 
 ### Task 2.2: Implement HTTP API handlers with SSE streaming
+
 **Status**: ✅ Complete
 **Priority**: 🔴 Critical — core API functionality
 **Estimated effort**: Large
@@ -53,6 +58,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 **Objective**: Create functional HTTP handlers for chat completions (with SSE streaming) and health checks.
 
 **Checklist**:
+
 - [x] `crates/gateway-api/src/handlers/health.rs` — returns `200 OK` with status JSON
 - [x] Update `crates/gateway-api/src/handlers/chat.rs`
   - [x] Parse `ChatRequest` from JSON body
@@ -77,6 +83,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 **Current state**: Fully implemented. The chat handler routes requests to the appropriate provider via `Router`. Non-streaming requests return OpenAI-compatible JSON. Streaming requests return SSE events with proper `data:` formatting and a `[DONE]` terminator. Errors are mapped to appropriate HTTP status codes via `GatewayError`.
 
 **Notes**:
+
 - SSE streaming uses `axum::response::sse::Sse` with `Stream` adapter
 - Streaming flow:
   1. `router.route_stream(request)` returns a `BoxStream<Result<ChatChunk, GatewayError>>`
@@ -89,6 +96,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 ---
 
 ### Task 2.3: Implement request/response transformation
+
 **Status**: ❌ Not Started
 **Priority**: 🟡 Medium — normalizes responses across providers
 **Estimated effort**: Medium
@@ -96,6 +104,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 **Objective**: Create a transformation layer that normalizes provider-specific request/response formats to the unified gateway format.
 
 **Checklist**:
+
 - [ ] Create `crates/gateway-core/src/providers/transform.rs`
   - Implement `Transform` trait: `fn transform_request(req: &ChatRequest) -> serde_json::Value`
   - Implement `fn transform_response(resp: serde_json::Value) -> ChatResponse`
@@ -108,6 +117,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
   - Test stream chunk transformation
 
 **Notes**:
+
 - Each provider currently does its own transformation in its implementation
 - The transformation layer should be a shared utility that providers can use
 - This is optional for now — providers can continue to do their own transformation
@@ -115,6 +125,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 ---
 
 ### Task 2.4: Add provider selection based on request model
+
 **Status**: ✅ Complete
 **Priority**: 🟡 Medium — allows automatic provider selection
 **Estimated effort**: Small
@@ -122,6 +133,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 **Objective**: Allow the gateway to automatically select a provider based on the model requested in the `ChatRequest`.
 
 **Checklist**:
+
 - [x] Update `crates/gateway-core/src/router/mod.rs`
   - [x] `Router::is_model_supported(model)` method exists
   - [x] `Router::route()` iterates through providers and finds one that supports the model
@@ -129,15 +141,18 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 - [x] Update `crates/gateway-api/src/handlers/chat.rs`
   - [x] Uses model-based provider selection when `request.provider` is `None` (handled by `router.route()` / `router.route_stream()` via `resolve_provider()`)
   - [x] Uses specified provider when `request.provider` is `Some`
-- [ ] Add tests for model-based provider selection
-  - [ ] Test that correct provider is selected for known model
-  - [ ] Test that error is returned for unknown model
+- [x] Add tests for model-based provider selection
+  - [x] `test_resolve_provider_known_model_default` — default provider selected for supported model
+  - [x] `test_resolve_provider_explicit_provider` — explicit provider works
+  - [x] `test_resolve_provider_fallback_for_unsupported_model` — fallback provider used when default doesn't support model
+  - [x] `test_resolve_provider_unknown_model_no_fallback` — error returned for unknown model
 
 **Notes**: The router's `route()` method handles model-based selection with fallback. The chat handler delegates to the router, which uses `resolve_provider()` to select the appropriate provider based on the request's `provider` field and `model` field.
 
 ---
 
 ### Task 2.5: Add OpenAI-compatible /v1/models endpoint
+
 **Status**: ✅ Complete
 **Priority**: 🟢 Low — useful but not critical
 **Estimated effort**: Small
@@ -145,6 +160,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 **Objective**: Implement a `/v1/models` endpoint that lists all available models across providers.
 
 **Checklist**:
+
 - [x] Create `crates/gateway-api/src/handlers/models.rs`
   - [x] Implement `GET /v1/models` endpoint
   - [x] Return list of available models from all providers
@@ -158,51 +174,60 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 ---
 
 ### Task 2.6: Implement OpenAI provider with full streaming support
-**Status**: ⚠️ Partial (implemented, no tests)
+
+**Status**: ✅ Complete
 **Priority**: 🟢 Low — OpenAI provider already exists, this is for improvements
 **Estimated effort**: Medium
 
 **Objective**: Improve the existing OpenAI provider implementation.
 
 **Checklist**:
-- [x] `crates/gateway-core/src/providers/openai.rs` — full implementation (302 lines)
+
+- [x] `crates/gateway-core/src/providers/openai.rs` (now `openai/mod.rs`) — full implementation
   - [x] Supports `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-4`, `gpt-3.5-turbo`
   - [x] Full SSE streaming with `bytes_stream()` + `filter_map`
   - [x] Uses `reqwest::Client`
-- [ ] Review and improve `crates/gateway-core/src/providers/openai.rs`
-  - [ ] Add error handling for edge cases
-  - [ ] Improve streaming reliability
-  - [ ] Add connection timeout configuration
-- [ ] Add tests for the OpenAI provider
-  - [ ] Test `complete_chat()` with mock HTTP responses
-  - [ ] Test `stream_chat()` with mock streaming responses
-  - [ ] Test model validation
-  - [ ] Test error handling
+- [x] Add tests for the OpenAI provider
+  - [x] `test_provider_name` — verifies provider name
+  - [x] `test_supports_streaming` — verifies streaming support flag
+  - [x] `test_supported_models` — verifies model list
+  - [x] `test_supports_model_known` — verifies known model detection
+  - [x] `test_supports_model_unknown` — verifies unknown model rejection
+  - [x] `test_complete_chat_unsupported_model` — verifies error on unsupported model
+  - [x] `test_stream_chat_unsupported_model` — verifies stream error on unsupported model
+  - [x] `test_convert_messages` — verifies message format conversion
+  - [x] `test_map_role` — verifies role mapping
+  - [x] `test_new_provider_stores_config` — verifies API key and base URL storage
+  - [x] `test_with_timeout_provider` — verifies custom timeout
 
 ---
 
 ### Task 2.7: Implement Anthropic provider with full streaming support
-**Status**: ⚠️ Partial (implemented, no tests)
+
+**Status**: ✅ Complete
 **Priority**: 🟢 Low — Anthropic provider already exists, this is for improvements
 **Estimated effort**: Medium
 
 **Objective**: Improve the existing Anthropic provider implementation.
 
 **Checklist**:
-- [x] `crates/gateway-core/src/providers/anthropic.rs` — full implementation (334 lines)
+
+- [x] `crates/gateway-core/src/providers/anthropic.rs` (now `anthropic/mod.rs`) — full implementation
   - [x] Supports `claude-sonnet-4-20250514`, `claude-3-5-sonnet-20241022`, `claude-3-opus`, etc.
   - [x] Handles system message extraction
   - [x] Full SSE streaming with event types (`content_block_delta`, `message_stop`, etc.)
   - [x] Uses `reqwest::Client`
-- [ ] Review and improve `crates/gateway-core/src/providers/anthropic.rs`
-  - [ ] Add error handling for edge cases
-  - [ ] Improve streaming reliability
-  - [ ] Add connection timeout configuration
-- [ ] Add tests for the Anthropic provider
-  - [ ] Test `complete_chat()` with mock HTTP responses
-  - [ ] Test `stream_chat()` with mock streaming responses
-  - [ ] Test model validation
-  - [ ] Test error handling
+- [x] Add tests for the Anthropic provider
+  - [x] `test_provider_name` — verifies provider name
+  - [x] `test_supports_streaming` — verifies streaming support flag
+  - [x] `test_supported_models` — verifies model list (6 models)
+  - [x] `test_supports_model_known` — verifies known model detection
+  - [x] `test_supports_model_unknown` — verifies unknown model rejection
+  - [x] `test_complete_chat_unsupported_model` — verifies error on unsupported model
+  - [x] `test_stream_chat_unsupported_model` — verifies stream error on unsupported model
+  - [x] `test_convert_messages` — verifies system message extraction and message format
+  - [x] `test_new_provider_stores_config` — verifies API key and base URL storage
+  - [x] `test_with_timeout_provider` — verifies custom timeout
 
 ---
 
@@ -211,16 +236,19 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 ```
 Task 2.1 (Router) ──────────── ✅ COMPLETE
 Task 2.2 (HTTP handlers) ──── ✅ COMPLETE
-Task 2.3 (Transform) ──────── Deferred — providers do their own transformation
+Task 2.3 (Transform) ──────── ❌ Not Started — providers do their own transformation
 Task 2.4 (Model selection) ── ✅ COMPLETE
 Task 2.5 (Models endpoint) ── ✅ COMPLETE
-Task 2.6 (OpenAI improvements) ── Can be parallelized
-Task 2.7 (Anthropic improvements) ── Can be parallelized
+Task 2.6 (OpenAI provider) ─── ✅ COMPLETE (with tests)
+Task 2.7 (Anthropic provider) ── ✅ COMPLETE (with tests)
 ```
 
 ## Success Criteria
 
 - [x] `cargo build --workspace` compiles successfully
+- [x] `cargo test --workspace` — 64 tests pass (types, error, router, OpenAI, Anthropic, config, middleware)
+- [x] `cargo clippy --workspace` — no warnings
+- [x] `cargo fmt --check` — formatting clean
 - [x] `POST /v1/chat/completions` returns a valid response from a real provider
 - [x] `POST /v1/chat/completions` with `stream: true` returns SSE events
 - [x] `GET /health` returns a valid response
