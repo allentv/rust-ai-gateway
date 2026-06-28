@@ -37,9 +37,8 @@ pub fn build_router() -> axum::Router {
 async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "info,gateway_api=debug,gateway_core=debug".into()
-            }),
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info,gateway_api=debug,gateway_core=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();

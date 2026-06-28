@@ -107,10 +107,7 @@ impl Router {
                 );
             }
         } else {
-            warn!(
-                "Provider '{}' not found, trying fallbacks",
-                provider_name
-            );
+            warn!("Provider '{}' not found, trying fallbacks", provider_name);
         }
 
         // Try fallback providers
@@ -157,9 +154,7 @@ impl Router {
 
     /// Check if a model is supported by any provider
     pub fn is_model_supported(&self, model: &str) -> bool {
-        self.providers
-            .values()
-            .any(|p| p.supports_model(model))
+        self.providers.values().any(|p| p.supports_model(model))
     }
 
     /// Get the default provider name
@@ -189,7 +184,7 @@ mod tests {
             ProviderConfig {
                 api_key: "test-key".to_string(),
                 base_url: "https://api.anthropic.com".to_string(),
-                models: vec!["claude-3-opus".to_string()],
+                models: vec!["claude-3-opus-20240229".to_string()],
                 rate_limit: None,
             },
         );
@@ -236,7 +231,7 @@ mod tests {
         let models = router.available_models();
         assert!(models.contains(&"gpt-4".to_string()));
         assert!(models.contains(&"gpt-3.5-turbo".to_string()));
-        assert!(models.contains(&"claude-3-opus".to_string()));
+        assert!(models.contains(&"claude-3-opus-20240229".to_string()));
     }
 
     #[test]
@@ -244,7 +239,7 @@ mod tests {
         let config = test_config();
         let router = Router::new(&config).unwrap();
         assert!(router.is_model_supported("gpt-4"));
-        assert!(router.is_model_supported("claude-3-opus"));
+        assert!(router.is_model_supported("claude-3-opus-20240229"));
         assert!(!router.is_model_supported("nonexistent-model"));
     }
 

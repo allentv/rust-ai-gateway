@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::commands::CacheCommand;
+use anyhow::Result;
 
 pub async fn run(command: CacheCommand) -> Result<()> {
     match command {

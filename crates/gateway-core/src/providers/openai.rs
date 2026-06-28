@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::error::GatewayError;
-use crate::types::{ChatChunk, ChatRequest, ChatResponse, Delta, Message, Role, TokenUsage};
 use crate::providers::traits::Provider;
+use crate::types::{ChatChunk, ChatRequest, ChatResponse, Delta, Message, Role, TokenUsage};
 
 const OPENAI_MODELS: &[&str] = &[
     "gpt-4o",
@@ -126,10 +126,7 @@ impl OpenAiProvider {
 #[async_trait]
 impl Provider for OpenAiProvider {
     #[instrument(skip(self, request), fields(provider = "openai"))]
-    async fn complete_chat(
-        &self,
-        request: ChatRequest,
-    ) -> Result<ChatResponse, GatewayError> {
+    async fn complete_chat(&self, request: ChatRequest) -> Result<ChatResponse, GatewayError> {
         if !self.supports_model(&request.model) {
             return Err(GatewayError::ModelNotSupported {
                 model: request.model.clone(),
@@ -280,12 +277,10 @@ impl Provider for OpenAiProvider {
                         }
                         futures::stream::iter(chunks).boxed()
                     }
-                    Err(e) => {
-                        futures::stream::once(async move {
-                            Err(GatewayError::provider("openai", e.to_string()))
-                        })
-                        .boxed()
-                    }
+                    Err(e) => futures::stream::once(async move {
+                        Err(GatewayError::provider("openai", e.to_string()))
+                    })
+                    .boxed(),
                 }
             })
             .boxed();

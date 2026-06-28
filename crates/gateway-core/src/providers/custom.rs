@@ -3,8 +3,8 @@ use futures::stream::BoxStream;
 use tracing::instrument;
 
 use crate::error::GatewayError;
-use crate::types::{ChatChunk, ChatRequest, ChatResponse};
 use crate::providers::traits::Provider;
+use crate::types::{ChatChunk, ChatRequest, ChatResponse};
 
 /// Custom OpenAI-compatible provider
 #[allow(dead_code)]
@@ -17,12 +17,7 @@ pub struct CustomProvider {
 }
 
 impl CustomProvider {
-    pub fn new(
-        name: String,
-        api_key: String,
-        base_url: String,
-        models: Vec<String>,
-    ) -> Self {
+    pub fn new(name: String, api_key: String, base_url: String, models: Vec<String>) -> Self {
         Self {
             name,
             api_key,
@@ -36,10 +31,8 @@ impl CustomProvider {
 #[async_trait]
 impl Provider for CustomProvider {
     #[instrument(skip(self), fields(model = %request.model))]
-    async fn complete_chat(
-        &self,
-        _request: ChatRequest,
-    ) -> Result<ChatResponse, GatewayError> {
+    async fn complete_chat(&self, request: ChatRequest) -> Result<ChatResponse, GatewayError> {
+        let _ = request;
         Err(GatewayError::Internal(format!(
             "Custom provider '{}' not yet implemented",
             self.name
@@ -49,8 +42,9 @@ impl Provider for CustomProvider {
     #[instrument(skip(self), fields(model = %request.model))]
     async fn stream_chat(
         &self,
-        _request: ChatRequest,
+        request: ChatRequest,
     ) -> Result<BoxStream<'static, Result<ChatChunk, GatewayError>>, GatewayError> {
+        let _ = request;
         Err(GatewayError::Internal(format!(
             "Custom provider '{}' not yet implemented",
             self.name

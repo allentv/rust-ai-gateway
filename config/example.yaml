@@ -1,0 +1,98 @@
+# Rust AI Gateway — Example Configuration
+#
+# This file demonstrates all available configuration options.
+# Environment variables can be referenced as ${VAR_NAME}.
+
+# Server configuration
+server:
+  # Bind address (default: "0.0.0.0")
+  host: "0.0.0.0"
+  # Listening port (default: 8080)
+  port: 8080
+  # Number of worker threads (default: number of CPUs or 4)
+  workers: 4
+
+# Provider configurations
+# Each key is a provider name used for routing
+providers:
+  openai:
+    # API key — use ${ENV_VAR} for environment variable substitution
+    api_key: "${OPENAI_API_KEY}"
+    # Base URL for the provider's API
+    base_url: "https://api.openai.com/v1"
+    # List of supported model identifiers
+    models:
+      - gpt-4o
+      - gpt-4o-mini
+      - gpt-4-turbo
+      - gpt-4
+      - gpt-3.5-turbo
+    # Optional per-provider rate limiting
+    rate_limit:
+      requests_per_minute: 60
+      tokens_per_minute: 100000
+
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    base_url: "https://api.anthropic.com"
+    models:
+      - claude-sonnet-4-20250514
+      - claude-3-5-sonnet-20241022
+      - claude-3-haiku-20240307
+    rate_limit:
+      requests_per_minute: 60
+      tokens_per_minute: 100000
+
+  google:
+    api_key: "${GOOGLE_API_KEY}"
+    base_url: "https://generativelanguage.googleapis.com/v1beta"
+    models:
+      - gemini-2.0-flash
+      - gemini-2.0-pro
+      - gemini-1.5-flash
+      - gemini-1.5-pro
+
+  # Custom OpenAI-compatible provider example
+  # local-llama:
+  #   api_key: "no-key"
+  #   base_url: "http://localhost:11434/v1"
+  #   models:
+  #     - llama3
+  #     - mistral
+
+# Routing configuration
+routing:
+  # Provider used when no specific provider is requested
+  default_provider: "openai"
+  # Fallback providers tried in order when the default fails
+  fallback_providers:
+    - anthropic
+    - google
+
+# Cache configuration
+cache:
+  # Enable response caching (default: true)
+  enabled: true
+  # Time-to-live in seconds (default: 3600)
+  ttl_seconds: 3600
+  # Maximum number of cached entries (default: 10000)
+  max_size: 10000
+
+# Telemetry / OpenTelemetry configuration
+telemetry:
+  # Enable telemetry export (default: false)
+  enabled: false
+  # OTLP endpoint URL (optional)
+  # endpoint: "http://localhost:4317"
+  # Service name for traces and metrics (default: "ai-gateway")
+  service_name: "ai-gateway"
+
+# Metering / metrics configuration
+metering:
+  # Enable metering (default: false)
+  enabled: false
+  # Metrics to collect
+  metrics:
+    - request_count
+    - token_usage
+    - cost_estimate

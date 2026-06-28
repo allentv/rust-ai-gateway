@@ -1,5 +1,5 @@
-use anyhow::{Context, Result};
 use crate::commands::ConfigCommand;
+use anyhow::{Context, Result};
 
 pub async fn run(command: ConfigCommand) -> Result<()> {
     match command {
@@ -20,7 +20,10 @@ async fn validate_config(path: &str) -> Result<()> {
                 println!("    - {}: {} models", name, provider.models.len());
             }
             println!("  Default provider: {}", config.routing.default_provider);
-            println!("  Fallback providers: {:?}", config.routing.fallback_providers);
+            println!(
+                "  Fallback providers: {:?}",
+                config.routing.fallback_providers
+            );
             println!("  Cache enabled: {}", config.cache.enabled);
             Ok(())
         }
@@ -41,8 +44,7 @@ async fn show_config(path: &str) -> Result<()> {
     println!();
 
     // Display as YAML
-    let yaml = serde_yaml::to_string(&config)
-        .context("Failed to serialize configuration")?;
+    let yaml = serde_yaml::to_string(&config).context("Failed to serialize configuration")?;
     println!("{}", yaml);
 
     Ok(())

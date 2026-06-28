@@ -8,10 +8,7 @@ use crate::types::{ChatChunk, ChatRequest, ChatResponse};
 #[async_trait]
 pub trait Provider: Send + Sync {
     /// Send a chat completion request and get a complete response
-    async fn complete_chat(
-        &self,
-        request: ChatRequest,
-    ) -> Result<ChatResponse, GatewayError>;
+    async fn complete_chat(&self, request: ChatRequest) -> Result<ChatResponse, GatewayError>;
 
     /// Send a chat completion request and get a streaming response
     async fn stream_chat(

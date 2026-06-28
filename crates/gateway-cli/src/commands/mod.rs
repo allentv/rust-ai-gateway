@@ -1,6 +1,6 @@
+pub mod cache;
 pub mod config;
 pub mod status;
-pub mod cache;
 
 use clap::Subcommand;
 

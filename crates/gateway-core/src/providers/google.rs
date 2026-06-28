@@ -3,8 +3,8 @@ use futures::stream::BoxStream;
 use tracing::instrument;
 
 use crate::error::GatewayError;
-use crate::types::{ChatChunk, ChatRequest, ChatResponse};
 use crate::providers::traits::Provider;
+use crate::types::{ChatChunk, ChatRequest, ChatResponse};
 
 const GOOGLE_MODELS: &[&str] = &[
     "gemini-2.0-flash",
@@ -34,10 +34,8 @@ impl GoogleProvider {
 #[async_trait]
 impl Provider for GoogleProvider {
     #[instrument(skip(self), fields(model = %request.model))]
-    async fn complete_chat(
-        &self,
-        _request: ChatRequest,
-    ) -> Result<ChatResponse, GatewayError> {
+    async fn complete_chat(&self, request: ChatRequest) -> Result<ChatResponse, GatewayError> {
+        let _ = request;
         Err(GatewayError::Internal(
             "Google provider not yet implemented".to_string(),
         ))
@@ -46,8 +44,9 @@ impl Provider for GoogleProvider {
     #[instrument(skip(self), fields(model = %request.model))]
     async fn stream_chat(
         &self,
-        _request: ChatRequest,
+        request: ChatRequest,
     ) -> Result<BoxStream<'static, Result<ChatChunk, GatewayError>>, GatewayError> {
+        let _ = request;
         Err(GatewayError::Internal(
             "Google provider not yet implemented".to_string(),
         ))

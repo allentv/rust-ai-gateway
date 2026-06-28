@@ -127,21 +127,12 @@ fn default_service_name() -> String {
 }
 
 /// Metering configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MeteringConfig {
     #[serde(default)]
     pub enabled: bool,
     #[serde(default)]
     pub metrics: Vec<MetricType>,
-}
-
-impl Default for MeteringConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            metrics: Vec::new(),
-        }
-    }
 }
 
 /// Supported metric types

@@ -88,32 +88,32 @@ Phase 1 covers workspace setup, core types, provider trait, error handling, conf
 ---
 
 ### Task 1.4: Create default configuration files
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 **Priority**: 🟡 Medium — useful for testing and examples
 **Estimated effort**: Small
 
 **Objective**: Create example configuration files that can be used for development and testing.
 
 **Checklist**:
-- [ ] Create `config/default.yaml` with example configuration
+- [x] Create `config/default.yaml` with example configuration
   - Include `server`, `providers`, `routing`, `cache`, `telemetry`, `metering` sections
   - Use environment variable placeholders: `${OPENAI_API_KEY}`, `${ANTHROPIC_API_KEY}`
-- [ ] Create `config/example.yaml` with a more detailed example
+- [x] Create `config/example.yaml` with a more detailed example
   - Include all configuration options with comments
   - Show different provider configurations
-- [ ] Run `cargo test -p gateway-config` and verify config loading works
+- [x] Run `cargo test -p gateway-config` and verify config loading works
 
 ---
 
 ### Task 1.5: Add tests for gateway-core types and error handling
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 **Priority**: 🟡 Medium — ensures correctness of core types
 **Estimated effort**: Small
 
 **Objective**: Add unit tests for the core types and error modules.
 
 **Checklist**:
-- [ ] Add tests to `crates/gateway-core/src/types.rs`
+- [x] Add tests to `crates/gateway-core/src/types.rs`
   - Test `TokenUsage::new()` calculates total correctly
   - Test `RequestId::new()` produces valid UUID
   - Test `RequestId::as_str()` returns correct string
@@ -122,17 +122,17 @@ Phase 1 covers workspace setup, core types, provider trait, error handling, conf
   - Test `ChatRequest` serialization/deserialization
   - Test `ChatResponse` serialization/deserialization
   - Test `ChatChunk` serialization/deserialization
-- [ ] Add tests to `crates/gateway-core/src/error.rs`
+- [x] Add tests to `crates/gateway-core/src/error.rs`
   - Test `GatewayError::provider()` constructor
   - Test `GatewayError::provider_with_source()` constructor
   - Test `From<GatewayError> for (StatusCode, Json<Value>)` for each variant
   - Test that status codes are correct for each error variant
-- [ ] Run `cargo test -p gateway-core` and verify all tests pass
+- [x] Run `cargo test -p gateway-core` and verify all tests pass
 
 ---
 
 ### Task 1.6: Add tests for gateway-config validation
-**Status**: ⚠️ Partial (2 tests exist)
+**Status**: ✅ Complete
 **Priority**: 🟡 Medium — ensures config validation is correct
 **Estimated effort**: Small
 
@@ -140,7 +140,7 @@ Phase 1 covers workspace setup, core types, provider trait, error handling, conf
 
 **Checklist**:
 - [x] Basic env var resolution tests exist (`test_resolve_env_vars`, `test_resolve_env_vars_missing`)
-- [ ] Add tests to `crates/gateway-config/src/validation.rs`
+- [x] Add tests to `crates/gateway-config/src/validation.rs`
   - Test `load_from_yaml()` with valid YAML
   - Test `load_from_toml()` with valid TOML
   - Test `load_from_json()` with valid JSON
@@ -151,23 +151,23 @@ Phase 1 covers workspace setup, core types, provider trait, error handling, conf
   - Test `validate()` catches missing default provider
   - Test `validate()` catches missing fallback providers
   - Test `validate()` catches zero TTL when cache enabled
-- [ ] Run `cargo test -p gateway-config` and verify all tests pass
+- [x] Run `cargo test -p gateway-config` and verify all tests pass
 
 ---
 
 ### Task 1.7: Create gateway-core config.rs (config loading in core)
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 **Priority**: 🟢 Low — not critical for Phase 1
 **Estimated effort**: Small
 
 **Objective**: Create a configuration loading module in `gateway-core` that wraps `gateway-config` for use within the core library.
 
 **Checklist**:
-- [ ] Create `crates/gateway-core/src/config.rs`
+- [x] Create `crates/gateway-core/src/config.rs`
   - Provide a `load_config()` function that wraps `gateway_config::validation::load_config_with_env()`
   - Provide a `validate_config()` function
-- [ ] Update `crates/gateway-core/src/lib.rs` to include `pub mod config;`
-- [ ] Run `cargo build -p gateway-core` and verify it compiles
+- [x] Update `crates/gateway-core/src/lib.rs` to include `pub mod config;`
+- [x] Run `cargo build -p gateway-core` and verify it compiles
 
 ---
 
@@ -186,8 +186,8 @@ Task 1.7 (Core config.rs) ──── Depends on Task 1.1
 ## Success Criteria
 
 - [x] `cargo build --workspace` compiles successfully
-- [ ] `cargo clippy --workspace -- -D warnings` passes (needs verification)
-- [ ] `cargo test --workspace` passes (needs verification)
+- [x] `cargo clippy --workspace -- -D warnings` passes
+- [x] `cargo test --workspace` passes (64 tests)
 - [x] All four crates have source files (no more "MISSING" files)
 - [x] `gateway-api` binary can start (even if in stub mode)
 - [x] `gateway-cli` binary can parse arguments

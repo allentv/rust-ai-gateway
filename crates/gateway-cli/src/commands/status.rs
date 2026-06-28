@@ -41,9 +41,30 @@ pub async fn run() -> Result<()> {
             println!("  Fallbacks: {:?}", config.routing.fallback_providers);
             println!();
 
-            println!("Cache: {}", if config.cache.enabled { "enabled" } else { "disabled" });
-            println!("Telemetry: {}", if config.telemetry.enabled { "enabled" } else { "disabled" });
-            println!("Metering: {}", if config.metering.enabled { "enabled" } else { "disabled" });
+            println!(
+                "Cache: {}",
+                if config.cache.enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            );
+            println!(
+                "Telemetry: {}",
+                if config.telemetry.enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            );
+            println!(
+                "Metering: {}",
+                if config.metering.enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            );
         }
         Err(_) => {
             println!("Configuration: not found at {}", config_path);

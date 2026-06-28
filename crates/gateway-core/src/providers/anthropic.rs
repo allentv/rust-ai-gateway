@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::error::GatewayError;
-use crate::types::{ChatChunk, ChatRequest, ChatResponse, Delta, Message, Role, TokenUsage};
 use crate::providers::traits::Provider;
+use crate::types::{ChatChunk, ChatRequest, ChatResponse, Delta, Message, Role, TokenUsage};
 
 const ANTHROPIC_MODELS: &[&str] = &[
     "claude-sonnet-4-20250514",
@@ -61,15 +61,11 @@ struct AnthropicUsage {
 #[allow(dead_code)]
 enum AnthropicStreamEvent {
     #[serde(rename = "content_block_delta")]
-    ContentBlockDelta {
-        delta: AnthropicDelta,
-    },
+    ContentBlockDelta { delta: AnthropicDelta },
     #[serde(rename = "message_stop")]
     MessageStop,
     #[serde(rename = "message_start")]
-    MessageStart {
-        message: AnthropicStreamMessage,
-    },
+    MessageStart { message: AnthropicStreamMessage },
     #[serde(rename = "content_block_start")]
     ContentBlockStart { index: usize },
 }
@@ -140,10 +136,7 @@ impl AnthropicProvider {
 #[async_trait]
 impl Provider for AnthropicProvider {
     #[instrument(skip(self, request), fields(provider = "anthropic"))]
-    async fn complete_chat(
-        &self,
-        request: ChatRequest,
-    ) -> Result<ChatResponse, GatewayError> {
+    async fn complete_chat(&self, request: ChatRequest) -> Result<ChatResponse, GatewayError> {
         if !self.supports_model(&request.model) {
             return Err(GatewayError::ModelNotSupported {
                 model: request.model.clone(),
@@ -310,12 +303,10 @@ impl Provider for AnthropicProvider {
                         }
                         futures::stream::iter(chunks).boxed()
                     }
-                    Err(e) => {
-                        futures::stream::once(async move {
-                            Err(GatewayError::provider("anthropic", e.to_string()))
-                        })
-                        .boxed()
-                    }
+                    Err(e) => futures::stream::once(async move {
+                        Err(GatewayError::provider("anthropic", e.to_string()))
+                    })
+                    .boxed(),
                 }
             })
             .boxed();

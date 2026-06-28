@@ -109,10 +109,7 @@ impl ChatCache {
             msg_json.hash(&mut hasher);
         }
 
-        request
-            .temperature
-            .map(|t| t.to_bits())
-            .hash(&mut hasher);
+        request.temperature.map(|t| t.to_bits()).hash(&mut hasher);
         request.max_tokens.hash(&mut hasher);
 
         format!("chat:{:x}", hasher.finish())
@@ -181,10 +178,7 @@ impl AuthMiddleware {
             required,
             api_keys.len()
         );
-        Self {
-            api_keys,
-            required,
-        }
+        Self { api_keys, required }
     }
 
     /// Validate an API key
@@ -196,17 +190,13 @@ impl AuthMiddleware {
                     Ok(())
                 } else {
                     warn!("Invalid API key provided");
-                    Err(GatewayError::Authentication(
-                        "Invalid API key".to_string(),
-                    ))
+                    Err(GatewayError::Authentication("Invalid API key".to_string()))
                 }
             }
             None => {
                 if self.required {
                     warn!("API key required but not provided");
-                    Err(GatewayError::Authentication(
-                        "API key required".to_string(),
-                    ))
+                    Err(GatewayError::Authentication("API key required".to_string()))
                 } else {
                     Ok(())
                 }
@@ -265,9 +255,7 @@ impl CostMeter {
             .fetch_add(usage.completion_tokens as u64, Ordering::Relaxed);
 
         let mut provider_requests = self.provider_requests.write().await;
-        *provider_requests
-            .entry(provider.to_string())
-            .or_insert(0) += 1;
+        *provider_requests.entry(provider.to_string()).or_insert(0) += 1;
 
         debug!(
             "Recorded request for provider '{}': {} tokens",

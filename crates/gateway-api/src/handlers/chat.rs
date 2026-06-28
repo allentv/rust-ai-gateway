@@ -16,9 +16,7 @@ pub async fn chat_completion(
 
     // Validate that the request has messages
     if request.messages.is_empty() {
-        return Err(
-            GatewayError::Serialization("Messages cannot be empty".to_string()).into(),
-        );
+        return Err(GatewayError::Serialization("Messages cannot be empty".to_string()).into());
     }
 
     // TODO: Route to the appropriate provider once router is integrated
