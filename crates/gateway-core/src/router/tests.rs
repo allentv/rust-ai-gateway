@@ -91,3 +91,96 @@ fn test_get_provider() {
     assert!(router.get_provider("openai").is_some());
     assert!(router.get_provider("nonexistent").is_none());
 }
+
+#[tokio::test]
+async fn test_resolve_provider_known_model_default() {
+    let config = test_config();
+    let router = Router::new(&config).unwrap();
+    let request = ChatRequest {
+        messages: vec![crate::types::Message {
+            role: crate::types::Role::User,
+            content: "Hello".to_string(),
+            name: None,
+        }],
+        model: "gpt-4".to_string(),
+        max_tokens: None,
+        temperature: None,
+        stream: false,
+        provider: None,
+    };
+    // No provider specified, default is "openai" which supports gpt-4
+    let result = router.route(request).await;
+    // The request will fail because we're using a fake API key,
+    // but the router should attempt to use the openai provider (not return ProviderNotFound)
+    assert!(!matches!(result, Err(GatewayError::ProviderNotFound(_))));
+}
+
+#[tokio::test]
+async fn test_resolve_provider_explicit_provider() {
+    let config = test_config();
+    let router = Router::new(&config).unwrap();
+    let request = ChatRequest {
+        messages: vec![crate::types::Message {
+            role: crate::types::Role::User,
+            content: "Hello".to_string(),
+            name: None,
+        }],
+        model: "claude-3-opus-20240229".to_string(),
+        max_tokens: None,
+        temperature: None,
+        stream: false,
+        provider: Some("anthropic".to_string()),
+    };
+    // Explicit provider "anthropic" with a model it supports
+    let result = router.route(request).await;
+    // Should route to anthropic (will fail due to fake API key, but not ProviderNotFound)
+    assert!(!matches!(result, Err(GatewayError::ProviderNotFound(_))));
+}
+
+#[tokio::test]
+async fn test_resolve_provider_fallback_for_unsupported_model() {
+    let config = test_config();
+    let router = Router::new(&config).unwrap();
+    let request = ChatRequest {
+        messages: vec![crate::types::Message {
+            role: crate::types::Role::User,
+            content: "Hello".to_string(),
+            name: None,
+        }],
+        model: "claude-3-opus-20240229".to_string(),
+        max_tokens: None,
+        temperature: None,
+        stream: false,
+        provider: None,
+    };
+    // Default provider is "openai" which doesn't support claude-3-opus
+    // Should fall back to "anthropic"
+    let result = router.route(request).await;
+    assert!(!matches!(result, Err(GatewayError::ProviderNotFound(_))));
+}
+
+#[tokio::test]
+async fn test_resolve_provider_unknown_model_no_fallback() {
+    let config = test_config();
+    let router = Router::new(&config).unwrap();
+    let request = ChatRequest {
+        messages: vec![crate::types::Message {
+            role: crate::types::Role::User,
+            content: "Hello".to_string(),
+            name: None,
+        }],
+        model: "nonexistent-model".to_string(),
+        max_tokens: None,
+        temperature: None,
+        stream: false,
+        provider: None,
+    };
+    // No provider supports "nonexistent-model"
+    let result = router.route(request).await;
+    match result {
+        Err(GatewayError::ModelNotSupported { model, .. }) => {
+            assert_eq!(model, "nonexistent-model");
+        }
+        other => panic!("Expected ModelNotSupported error, got: {:?}", other),
+    }
+}
