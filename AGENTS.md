@@ -14,17 +14,25 @@ rust-ai-gateway/
 ├── .mise.toml                    # mise configuration (toolchain + tasks)
 ├── crates/
 │   ├── gateway-core/             # Core library: providers, routing, middleware
+│   │   └── AGENTS.md             # Core crate context
 │   ├── gateway-api/              # HTTP API layer (axum handlers)
+│   │   └── AGENTS.md             # API crate context
 │   ├── gateway-cli/              # CLI tool for configuration and management
+│   │   └── AGENTS.md             # CLI crate context
 │   └── gateway-config/           # Configuration schemas and validation
+│       └── AGENTS.md             # Config crate context
 ├── docs/
 │   ├── implementation-plan.md    # Detailed implementation plan
-│   └── initial-idea.md           # Initial project idea
+│   ├── initial-idea.md           # Initial project idea
+│   ├── phase-1-foundation.md     # Phase 1 task tracker
+│   ├── phase-2-core.md           # Phase 2 task tracker
+│   ├── phase-3-middleware.md     # Phase 3 task tracker
+│   └── phase-4-production.md     # Phase 4 task tracker
 ├── .agents/
 │   ├── rules.md                  # Project rules and conventions
 │   ├── commands/                 # Agent command definitions
 │   └── skills/                   # Agent skill definitions
-├── AGENTS.md                     # This file
+├── AGENTS.md                     # This file (links to crate-level AGENTS.md)
 └── RUNBOOK.md                    # Project runbook
 ```
 
@@ -127,6 +135,28 @@ mise run update
 # Generate documentation
 mise run doc
 ```
+
+## Implementation Phase Trackers
+
+Each phase has a dedicated markdown file that tracks sub-agent tasks, progress, and dependencies across sessions. **Update the checkboxes in these files as tasks are completed** to maintain continuity across AI sessions.
+
+| Phase | File | Summary |
+|-------|------|---------|
+| Phase 1 | [docs/phase-1-foundation.md](docs/phase-1-foundation.md) | Foundation & scaffolding: fix compilation, create entry points, config files, tests |
+| Phase 2 | [docs/phase-2-core.md](docs/phase-2-core.md) | Core functionality: routing, HTTP handlers, SSE streaming, provider improvements |
+| Phase 3 | [docs/phase-3-middleware.md](docs/phase-3-middleware.md) | Middleware & features: rate limiting, caching, auth, cost metering, telemetry |
+| Phase 4 | [docs/phase-4-production.md](docs/phase-4-production.md) | Production readiness: Docker, CI/CD, documentation, integration tests |
+
+## Crate Context Files
+
+Each crate has its own `AGENTS.md` file that provides detailed context about the crate's structure, key types, implementation status, and notes for AI sessions. **Read the relevant `AGENTS.md` before working on a crate** to avoid needing to re-read all source files.
+
+| Crate | AGENTS.md | Summary |
+|-------|-----------|---------|
+| `gateway-core` | [crates/gateway-core/AGENTS.md](crates/gateway-core/AGENTS.md) | Core library: providers, types, errors, routing (planned), middleware (planned) |
+| `gateway-api` | [crates/gateway-api/AGENTS.md](crates/gateway-api/AGENTS.md) | HTTP API layer: axum handlers, SSE streaming, server entry point |
+| `gateway-cli` | [crates/gateway-cli/AGENTS.md](crates/gateway-cli/AGENTS.md) | CLI tool: config validation, status, cache management |
+| `gateway-config` | [crates/gateway-config/AGENTS.md](crates/gateway-config/AGENTS.md) | Configuration: schemas, validation, YAML/TOML/JSON loading |
 
 ## Provider Implementation Pattern
 
