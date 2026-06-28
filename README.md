@@ -232,17 +232,21 @@ crates/
 │   ├── error/tests.rs          # Error constructor and HTTP mapping tests
 │   ├── providers/
 │   │   ├── traits.rs           # Provider trait definition
-│   │   ├── openai.rs           # OpenAI API implementation
-│   │   ├── anthropic.rs        # Anthropic API implementation
-│   │   ├── google.rs           # Google (stub) implementation
-│   │   ├── custom.rs           # Custom provider (stub) implementation
-│   │   └── mod.rs              # Provider module exports
-│   ├── router/
-│   │   ├── mod.rs              # Router: provider selection and request routing
-│   │   └── tests.rs            # Router unit tests
-│   └── middleware/
-│       ├── mod.rs              # Rate limiter, cache, auth, cost meter
-│       └── tests.rs            # Middleware unit tests
+    │   ├── mod.rs              # Provider module exports
+    │   ├── openai/
+    │   │   ├── mod.rs          # OpenAI API implementation
+    │   │   └── tests.rs        # OpenAI provider tests (11)
+    │   ├── anthropic/
+    │   │   ├── mod.rs          # Anthropic API implementation
+    │   │   └── tests.rs        # Anthropic provider tests (10)
+    │   ├── google.rs           # Google (stub) implementation
+    │   └── custom.rs           # Custom provider (stub) implementation
+    ├── router/
+    │   ├── mod.rs              # Router: provider selection and request routing
+    │   └── tests.rs            # Router unit tests (10)
+    └── middleware/
+        ├── mod.rs              # Rate limiter, cache, auth, cost meter
+        └── tests.rs            # Middleware unit tests (4)
 ├── gateway-config/src/
 │   ├── lib.rs                  # Module declarations
 │   ├── schema.rs               # Configuration schema structs
@@ -295,28 +299,34 @@ cargo check --workspace
 This project is under active development. Here is the current implementation status:
 
 ### Phase 1: Foundation ✅
+
 - [x] Cargo workspace setup
 - [x] Core types (`ChatRequest`, `ChatResponse`, `Message`, `Role`, `TokenUsage`, `ChatChunk`, `Delta`, `RequestId`)
 - [x] Error types with HTTP status mapping
 - [x] Provider trait definition with async streaming support
 - [x] Configuration schema and validation (YAML/TOML/JSON)
-- [x] OpenAI provider implementation (with SSE streaming)
-- [x] Anthropic provider implementation (with SSE streaming)
+- [x] OpenAI provider implementation (with SSE streaming, 11 tests)
+- [x] Anthropic provider implementation (with SSE streaming, 10 tests)
 - [x] Google and Custom provider stubs
 - [x] Router with provider selection and fallback
 - [x] Middleware structs (rate limiter, cache, auth, cost meter)
-- [x] HTTP API server with axum (health check, chat endpoint)
+- [x] HTTP API server with axum (health check, chat, models endpoint)
 - [x] CLI with config validation and status display
 - [x] Default and example configuration files
-- [x] 64 unit tests, clippy clean
+- [x] 89 unit tests, clippy clean
 
-### Phase 2: Core Functionality 🔧
-- [x] HTTP API endpoints (axum) — basic endpoints exist
-- [x] Request routing logic — Router implemented
-- [ ] SSE streaming passthrough (providers support it, API handler not wired)
-- [ ] Wire Router into chat handler (currently returns placeholder)
+### Phase 2: Core Functionality ✅
+
+- [x] HTTP API endpoints (axum) — chat completions, health check, /v1/models
+- [x] Request routing logic — Router with default + fallback + model-based selection
+- [x] SSE streaming passthrough — providers stream, API relays as SSE with `[DONE]` terminator
+- [x] OpenAI provider — full complete_chat and stream_chat (11 tests)
+- [x] Anthropic provider — full complete_chat and stream_chat with system message extraction (10 tests)
+- [x] Model-based provider selection with automatic fallback
+- [ ] Request/response transformation layer (deferred — providers do their own)
 
 ### Phase 3: Middleware & Features 🔧
+
 - [x] Rate limiting (governor) — struct exists, not wired as Tower layer
 - [x] Cost metering — struct exists, not wired
 - [x] Response caching (moka) — struct exists, not wired
@@ -325,6 +335,7 @@ This project is under active development. Here is the current implementation sta
 - [ ] Configuration hot-reload
 
 ### Phase 4: Production Readiness 🔧
+
 - [x] Graceful shutdown
 - [x] Health checks (basic `/health` endpoint)
 - [ ] Readiness probe (`/ready`)

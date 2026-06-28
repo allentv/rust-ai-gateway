@@ -136,6 +136,7 @@ rust-ai-gateway/
 | CLI Parsing | `clap` | Industry standard for Rust CLI tools |
 | Error Handling | `thiserror` + `anyhow` | Structured errors with context |
 | Logging | `tracing` + `tracing-subscriber` | Structured, async-aware logging |
+| Middleware | `tower` + `tower-http` (cors, trace) | Modular middleware layers |
 
 ### Core Traits
 
@@ -147,7 +148,7 @@ pub trait Provider: Send + Sync {
     fn name(&self) -> &str;
     fn supports_streaming(&self) -> bool { true }
     fn supported_models(&self) -> Vec<&str>;
-    fn supports_model(&self, model: &str) -> bool { ... }
+    fn supports_model(&self, model: &str) -> bool;
 }
 ```
 
@@ -188,14 +189,16 @@ Configuration supports both YAML and TOML formats. Environment variables can be 
 
 **Issue**: Tests fail after code changes
 
-**Solution**: 
+**Solution**:
+
 1. Run `mise run check` to get a full health check
 2. Run `mise run test` to see which tests fail
 3. Fix the underlying code issues
 
 **Issue**: Tests are slow
 
-**Solution**: 
+**Solution**:
+
 1. Run `mise run test-crate <crate-name>` to test only specific crates
 2. Use `mise run test-output` to see detailed output
 
@@ -203,14 +206,16 @@ Configuration supports both YAML and TOML formats. Environment variables can be 
 
 **Issue**: Clippy warnings
 
-**Solution**: 
+**Solution**:
+
 1. Run `mise run lint` to see all warnings
 2. Fix warnings before committing
 3. Common issues: unused imports, unnecessary clones, type complexity
 
 **Issue**: Formatting issues
 
-**Solution**: 
+**Solution**:
+
 1. Run `mise run fmt` to auto-format
 2. Run `mise run fmt-check` to verify
 
@@ -218,7 +223,8 @@ Configuration supports both YAML and TOML formats. Environment variables can be 
 
 **Issue**: Dependency conflicts
 
-**Solution**: 
+**Solution**:
+
 1. Run `mise run update` to update dependencies
 2. Check workspace `Cargo.toml` for dependency versions
 3. Use `workspace = true` for shared dependencies
@@ -246,7 +252,7 @@ Configuration supports both YAML and TOML formats. Environment variables can be 
 ## Development Workflow
 
 1. **Local development**: `mise run build` then `cargo run --bin gateway-api`
-2. **Testing**: `mise run test` (64 tests across gateway-config and gateway-core)
+2. **Testing**: `mise run test` (89 tests across all crates: gateway-config: 25, gateway-core: 64)
 3. **Linting**: `mise run lint`
 4. **Formatting**: `mise run fmt`
 5. **Build**: `mise run build-release`
