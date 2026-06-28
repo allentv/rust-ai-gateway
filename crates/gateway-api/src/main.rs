@@ -2,12 +2,13 @@ use anyhow::Result;
 use axum::routing::{get, post};
 use clap::Parser;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod handlers;
-mod middleware;
+use gateway_api::handlers;
+use gateway_api::AppState;
 
 #[derive(Parser)]
 #[command(name = "gateway-api", about = "Rust AI Gateway API Server")]
@@ -17,7 +18,7 @@ struct Cli {
     config: String,
 }
 
-pub fn build_router() -> axum::Router {
+pub fn build_router(state: Arc<AppState>) -> axum::Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -29,8 +30,10 @@ pub fn build_router() -> axum::Router {
             "/v1/chat/completions",
             post(handlers::chat::chat_completion),
         )
+        .route("/v1/models", get(handlers::models::list_models))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
+        .layer(axum::extract::Extension(state))
 }
 
 #[tokio::main]
@@ -55,7 +58,13 @@ async fn main() -> Result<()> {
         config.server.port
     );
 
-    let app = build_router();
+    // Create router from config
+    let router = gateway_core::router::Router::new(&config).expect("Failed to create router");
+    let state = Arc::new(AppState {
+        router: Arc::new(router),
+    });
+
+    let app = build_router(state);
     let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port)
         .parse()
         .expect("Invalid address");
