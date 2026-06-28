@@ -31,7 +31,7 @@ pub fn load_from_yaml(path: impl AsRef<Path>) -> Result<GatewayConfig, ConfigErr
 pub fn load_from_toml(path: impl AsRef<Path>) -> Result<GatewayConfig, ConfigError> {
     let content = std::fs::read_to_string(path.as_ref())?;
     let config: GatewayConfig =
-        serde_toml::from_str(&content).map_err(|e| ConfigError::Parse(e.to_string()))?;
+        toml::from_str(&content).map_err(|e| ConfigError::Parse(e.to_string()))?;
     validate(&config)?;
     Ok(config)
 }
@@ -165,7 +165,7 @@ pub fn load_config_with_env(path: impl AsRef<Path>) -> Result<GatewayConfig, Con
             Ok(config)
         }
         Some("toml") => {
-            let config: GatewayConfig = serde_toml::from_str(&resolved)
+            let config: GatewayConfig = toml::from_str(&resolved)
                 .map_err(|e| ConfigError::Parse(e.to_string()))?;
             validate(&config)?;
             Ok(config)

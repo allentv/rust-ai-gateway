@@ -18,6 +18,7 @@ futures.workspace = true
 bytes.workspace = true
 uuid.workspace = true
 chrono.workspace = true
+axum.workspace = true
 url.workspace = true
 governor.workspace = true
 moka.workspace = true

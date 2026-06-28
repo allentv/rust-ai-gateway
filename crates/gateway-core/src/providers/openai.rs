@@ -243,8 +243,8 @@ impl Provider for OpenAiProvider {
 
         let stream = response
             .bytes_stream()
-            .filter_map(|result| async move {
-                match result {
+            .flat_map(|result| {
+                let chunks = match result {
                     Ok(bytes) => {
                         let text = String::from_utf8_lossy(&bytes);
                         // SSE format: "data: {...}\n\n" or "data: [DONE]\n\n"
@@ -284,9 +284,9 @@ impl Provider for OpenAiProvider {
                         })
                         .boxed()
                     }
-                }
+                };
+                futures::future::ready(chunks)
             })
-            .flatten()
             .boxed();
 
         Ok(stream)

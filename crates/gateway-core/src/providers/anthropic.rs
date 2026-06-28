@@ -263,62 +263,60 @@ impl Provider for AnthropicProvider {
 
         let stream = response
             .bytes_stream()
-            .filter_map(move |result| {
+            .flat_map(move |result| {
                 let id = message_id.clone();
-                async move {
-                    match result {
-                        Ok(bytes) => {
-                            let text = String::from_utf8_lossy(&bytes);
-                            let mut chunks = Vec::new();
-                            for line in text.lines() {
-                                let line = line.trim();
-                                if line.is_empty() || !line.starts_with("data: ") {
-                                    continue;
-                                }
-                                let data = &line[6..];
-                                match serde_json::from_str::<AnthropicStreamEvent>(data) {
-                                    Ok(event) => match event {
-                                        AnthropicStreamEvent::ContentBlockDelta { delta } => {
-                                            if let Some(text) = delta.text {
-                                                chunks.push(Ok(ChatChunk {
-                                                    id: id.clone(),
-                                                    delta: Delta {
-                                                        role: None,
-                                                        content: Some(text),
-                                                    },
-                                                    finish_reason: None,
-                                                    usage: None,
-                                                }));
-                                            }
-                                        }
-                                        AnthropicStreamEvent::MessageStop => {
+                let chunks = match result {
+                    Ok(bytes) => {
+                        let text = String::from_utf8_lossy(&bytes);
+                        let mut chunks = Vec::new();
+                        for line in text.lines() {
+                            let line = line.trim();
+                            if line.is_empty() || !line.starts_with("data: ") {
+                                continue;
+                            }
+                            let data = &line[6..];
+                            match serde_json::from_str::<AnthropicStreamEvent>(data) {
+                                Ok(event) => match event {
+                                    AnthropicStreamEvent::ContentBlockDelta { delta } => {
+                                        if let Some(text) = delta.text {
                                             chunks.push(Ok(ChatChunk {
                                                 id: id.clone(),
                                                 delta: Delta {
                                                     role: None,
-                                                    content: None,
+                                                    content: Some(text),
                                                 },
-                                                finish_reason: Some("stop".to_string()),
+                                                finish_reason: None,
                                                 usage: None,
                                             }));
                                         }
-                                        _ => {}
-                                    },
-                                    Err(_) => continue,
-                                }
+                                    }
+                                    AnthropicStreamEvent::MessageStop => {
+                                        chunks.push(Ok(ChatChunk {
+                                            id: id.clone(),
+                                            delta: Delta {
+                                                role: None,
+                                                content: None,
+                                            },
+                                            finish_reason: Some("stop".to_string()),
+                                            usage: None,
+                                        }));
+                                    }
+                                    _ => {}
+                                },
+                                Err(_) => continue,
                             }
-                            futures::stream::iter(chunks).boxed()
                         }
-                        Err(e) => {
-                            futures::stream::once(async move {
-                                Err(GatewayError::provider("anthropic", e.to_string()))
-                            })
-                            .boxed()
-                        }
+                        futures::stream::iter(chunks).boxed()
                     }
-                }
+                    Err(e) => {
+                        futures::stream::once(async move {
+                            Err(GatewayError::provider("anthropic", e.to_string()))
+                        })
+                        .boxed()
+                    }
+                };
+                futures::future::ready(chunks)
             })
-            .flatten()
             .boxed();
 
         Ok(stream)
