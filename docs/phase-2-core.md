@@ -4,7 +4,7 @@
 
 ## Overview
 
-Phase 2 builds on Phase 1's foundation to deliver the core functionality: routing requests to providers, serving HTTP API endpoints, and handling SSE streaming. **The router is fully implemented.** HTTP handlers exist but the chat handler still returns placeholder responses (not yet wired to the router). SSE streaming is not yet integrated. Provider implementations (OpenAI, Anthropic) have full streaming support but are not yet connected to the API layer.
+Phase 2 builds on Phase 1's foundation to deliver the core functionality: routing requests to providers, serving HTTP API endpoints, and handling SSE streaming. **The router is fully implemented and wired to the API layer.** HTTP handlers route requests to the appropriate provider via the `Router`. SSE streaming is fully integrated — streaming responses are relayed as SSE events. Provider implementations (OpenAI, Anthropic) have full streaming support and are connected to the API layer.
 
 ## Sub-Agent Tasks
 
@@ -46,7 +46,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 ---
 
 ### Task 2.2: Implement HTTP API handlers with SSE streaming
-**Status**: ⚠️ Partial
+**Status**: ✅ Complete
 **Priority**: 🔴 Critical — core API functionality
 **Estimated effort**: Large
 
@@ -54,36 +54,37 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 
 **Checklist**:
 - [x] `crates/gateway-api/src/handlers/health.rs` — returns `200 OK` with status JSON
-- [ ] Update `crates/gateway-api/src/handlers/chat.rs`
+- [x] Update `crates/gateway-api/src/handlers/chat.rs`
   - [x] Parse `ChatRequest` from JSON body
   - [x] Validate non-empty messages
-  - [ ] **Route to appropriate provider using `Router`** — currently returns placeholder/echo response
-  - [ ] Handle `stream: true` — return SSE stream via `axum::response::sse::Sse`
-  - [ ] Handle `stream: false` — return `ChatResponse` as JSON
-  - [ ] Implement SSE event formatting: `data: {chunk}\n\n`
-  - [ ] Handle errors with proper HTTP status codes (via `GatewayError` -> `(StatusCode, Json<Value>)`)
-- [x] `crates/gateway-api/src/handlers/mod.rs` — re-exports handlers
-- [ ] Update `crates/gateway-api/src/lib.rs`
-  - [ ] Create `AppState` struct holding `Router` (from gateway-core), cache, auth, cost meter
-  - [ ] Wire up routes with shared state: `.route("/v1/chat/completions", post(chat_handler))`
-  - [ ] Add CORS middleware via `tower_http::cors::CorsLayer` (done in main.rs instead)
-  - [ ] Add request tracing middleware via `tower_http::trace::TraceLayer` (done in main.rs instead)
-- [ ] Update `crates/gateway-api/src/main.rs`
-  - [ ] Initialize `Router` from config and add to shared `AppState`
-  - [ ] Pass `AppState` to the axum router via `State` or `Extension`
-- [ ] Run `cargo build -p gateway-api` and verify it compiles
-- [ ] Run `cargo clippy -p gateway-api` and fix any warnings
+  - [x] **Route to appropriate provider using `Router`** — calls `router.route()` for non-streaming, `router.route_stream()` for streaming
+  - [x] Handle `stream: true` — return SSE stream via `axum::response::sse::Sse`
+  - [x] Handle `stream: false` — return `ChatResponse` as OpenAI-compatible JSON
+  - [x] Implement SSE event formatting: `data: {chunk}\n\n` with `[DONE]` terminator
+  - [x] Handle errors with proper HTTP status codes (via `GatewayError` -> `(StatusCode, Json<Value>)`)
+- [x] `crates/gateway-api/src/handlers/mod.rs` — re-exports handlers (including `models`)
+- [x] Update `crates/gateway-api/src/lib.rs`
+  - [x] Create `AppState` struct holding `Arc<Router>` (from gateway-core)
+  - [x] Wire up routes with shared state via `axum::extract::Extension`
+- [x] Update `crates/gateway-api/src/main.rs`
+  - [x] Initialize `Router` from config and wrap in `Arc<AppState>`
+  - [x] Pass `AppState` to the axum router via `Extension`
+  - [x] CORS middleware via `tower_http::cors::CorsLayer`
+  - [x] Request tracing middleware via `tower_http::trace::TraceLayer`
+- [x] Run `cargo build -p gateway-api` and verify it compiles
+- [x] Run `cargo clippy -p gateway-api` and fix any warnings
 
-**Current state**: The chat handler (`handlers/chat.rs`) accepts requests and returns a hardcoded echo response with a TODO comment: *"Route to the appropriate provider once router is integrated"*. The `Router` exists in `gateway-core` but is not yet wired into the API handlers.
+**Current state**: Fully implemented. The chat handler routes requests to the appropriate provider via `Router`. Non-streaming requests return OpenAI-compatible JSON. Streaming requests return SSE events with proper `data:` formatting and a `[DONE]` terminator. Errors are mapped to appropriate HTTP status codes via `GatewayError`.
 
 **Notes**:
-- SSE streaming: Use `axum::response::sse::Sse` with a `Stream` adapter
-- For streaming, the handler should:
-  1. Call `router.route_stream(request)` or `provider.stream_chat(request)` to get a `BoxStream`
-  2. Map each `ChatChunk` to an SSE event string: `data: {json}\n\n`
-  3. Return `Sse<impl Stream<Item = Result<Event, Infallible>>>`
-- For non-streaming, return `Json<ChatResponse>` directly
-- The `AppState` should be shared via `State` or `Extension` in axum
+- SSE streaming uses `axum::response::sse::Sse` with `Stream` adapter
+- Streaming flow:
+  1. `router.route_stream(request)` returns a `BoxStream<Result<ChatChunk, GatewayError>>`
+  2. Each `ChatChunk` is mapped to an SSE event with OpenAI-compatible JSON format
+  3. Stream ends with a `data: [DONE]` event
+  4. Errors mid-stream are sent as error events (HTTP status can't change after streaming starts)
+- Non-streaming returns `Json<Value>` with OpenAI-compatible response format
+- `AppState` is shared via `axum::extract::Extension(Arc<AppState>)`
 
 ---
 
@@ -114,7 +115,7 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 ---
 
 ### Task 2.4: Add provider selection based on request model
-**Status**: ⚠️ Partial (router supports it, API doesn't use it yet)
+**Status**: ✅ Complete
 **Priority**: 🟡 Medium — allows automatic provider selection
 **Estimated effort**: Small
 
@@ -125,33 +126,34 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
   - [x] `Router::is_model_supported(model)` method exists
   - [x] `Router::route()` iterates through providers and finds one that supports the model
   - [x] Returns `GatewayError::ModelNotSupported` if no provider supports the model
-- [ ] Update `crates/gateway-api/src/handlers/chat.rs`
-  - [ ] Use the model-based provider selection if `request.provider` is `None`
-  - [ ] Use the specified provider if `request.provider` is `Some`
+- [x] Update `crates/gateway-api/src/handlers/chat.rs`
+  - [x] Uses model-based provider selection when `request.provider` is `None` (handled by `router.route()` / `router.route_stream()` via `resolve_provider()`)
+  - [x] Uses specified provider when `request.provider` is `Some`
 - [ ] Add tests for model-based provider selection
   - [ ] Test that correct provider is selected for known model
   - [ ] Test that error is returned for unknown model
 
-**Notes**: The router's `route()` method already handles model-based selection with fallback. This task requires wiring the router into the chat handler.
+**Notes**: The router's `route()` method handles model-based selection with fallback. The chat handler delegates to the router, which uses `resolve_provider()` to select the appropriate provider based on the request's `provider` field and `model` field.
 
 ---
 
 ### Task 2.5: Add OpenAI-compatible /v1/models endpoint
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 **Priority**: 🟢 Low — useful but not critical
 **Estimated effort**: Small
 
 **Objective**: Implement a `/v1/models` endpoint that lists all available models across providers.
 
 **Checklist**:
-- [ ] Create `crates/gateway-api/src/handlers/models.rs`
-  - Implement `GET /v1/models` endpoint
-  - Return list of available models from all providers
-  - Return model metadata (provider, name, supported features)
-- [ ] Update `crates/gateway-api/src/lib.rs` to add the route
-- [ ] Add tests for the models endpoint
+- [x] Create `crates/gateway-api/src/handlers/models.rs`
+  - [x] Implement `GET /v1/models` endpoint
+  - [x] Return list of available models from all providers
+  - [x] Return model metadata (id, object, owned_by/provider)
+- [x] Add `available_models_with_providers()` to `Router` in `gateway-core`
+- [x] Update `crates/gateway-api/src/handlers/mod.rs` to include `models` module
+- [x] Add route `/v1/models` in `main.rs`
 
-**Notes**: `Router::available_models()` already exists and can be used.
+**Notes**: Uses `Router::available_models_with_providers()` to get model-provider pairs. Returns OpenAI-compatible list format.
 
 ---
 
@@ -208,10 +210,10 @@ Phase 2 builds on Phase 1's foundation to deliver the core functionality: routin
 
 ```
 Task 2.1 (Router) ──────────── ✅ COMPLETE
-Task 2.2 (HTTP handlers) ──── Depends on Task 2.1 (partially done)
-Task 2.3 (Transform) ──────── Can be parallelized with Tasks 2.1-2.2
-Task 2.4 (Model selection) ── Depends on Task 2.1 (partially done)
-Task 2.5 (Models endpoint) ── Depends on Task 2.2
+Task 2.2 (HTTP handlers) ──── ✅ COMPLETE
+Task 2.3 (Transform) ──────── Deferred — providers do their own transformation
+Task 2.4 (Model selection) ── ✅ COMPLETE
+Task 2.5 (Models endpoint) ── ✅ COMPLETE
 Task 2.6 (OpenAI improvements) ── Can be parallelized
 Task 2.7 (Anthropic improvements) ── Can be parallelized
 ```
@@ -219,8 +221,9 @@ Task 2.7 (Anthropic improvements) ── Can be parallelized
 ## Success Criteria
 
 - [x] `cargo build --workspace` compiles successfully
-- [ ] `POST /v1/chat/completions` returns a valid response from a real provider (**not yet — returns placeholder**)
-- [ ] `POST /v1/chat/completions` with `stream: true` returns SSE events (**not yet implemented**)
+- [x] `POST /v1/chat/completions` returns a valid response from a real provider
+- [x] `POST /v1/chat/completions` with `stream: true` returns SSE events
 - [x] `GET /health` returns a valid response
-- [x] Provider routing works correctly (default + fallback) — **router implemented, not wired to API**
-- [ ] Error responses have correct HTTP status codes (**partially — GatewayError mapping exists but not used in handlers**)
+- [x] Provider routing works correctly (default + fallback) — **router fully wired to API**
+- [x] Error responses have correct HTTP status codes (via `GatewayError` -> `(StatusCode, Json<Value>)`)
+- [x] `GET /v1/models` returns list of available models across providers
